@@ -22,7 +22,7 @@ my $file = '/etc/dsd.conf';
 my $device = 'eth0';
 my $foreground = undef;
 GetOptions(
-	'config=s'     => \$file,
+	'config=s'   => \$file,
 	'foreground' => \$foreground,
 	'device'     => \$device,
 );
@@ -157,10 +157,10 @@ sub hup_handler {
 sub check_config {
 	my $config = shift;
 
-	return undef if (
-		(int($config->{'dsd.interval'}) ne $config->{'dsd.interval'} || $config->{'dsd.interval'} < 1) ||
-		(int($config->{'dsd.sample'})   ne $config->{'dsd.sample'}   || $config->{'dsd.sample'} < 1) ||
-		(!defined($config->{'dsd.zones'})) ||
-		(length($config->{'dsd.url'}) < 1)
+	return (
+		(int($config->{'dsd.interval'}) eq $config->{'dsd.interval'} && $config->{'dsd.interval'}  > 0) &&
+		(int($config->{'dsd.sample'})   eq $config->{'dsd.sample'}   && $config->{'dsd.sample'} > 0) &&
+		(defined($config->{'dsd.zones'})) &&
+		(length($config->{'dsd.url'}) > 0)
 	);
 }
