@@ -22,7 +22,7 @@ my $file = '/etc/dsd.conf';
 my $device = 'eth0';
 my $foreground = undef;
 GetOptions(
-	'file=s'     => \$file,
+	'config=s'     => \$file,
 	'foreground' => \$foreground,
 	'device'     => \$device,
 );
@@ -160,7 +160,7 @@ sub check_config {
 	return undef if (
 		(int($config->{'dsd.interval'}) ne $config->{'dsd.interval'} || $config->{'dsd.interval'} < 1) ||
 		(int($config->{'dsd.sample'})   ne $config->{'dsd.sample'}   || $config->{'dsd.sample'} < 1) ||
-		(length($config->{'dsd.sample'}) < 1) ||
+		(!defined($config->{'dsd.zones'})) ||
 		(length($config->{'dsd.url'}) < 1)
 	);
 }
