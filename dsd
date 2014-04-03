@@ -29,6 +29,8 @@ GetOptions(
 
 my $config = Config::Simple->new($file)->hashref;
 
+check_config($config) || die("Bad config");
+
 my ($network, $mask, $error);
 die($error) unless (0 == Net::Pcap::lookupnet($device, \$network, \$mask, \$error));
 
@@ -141,6 +143,24 @@ sub alrm_handler {
 }
 
 sub hup_handler {
-	$config = Config::Simple->new($file)->hashref;
-	syslog(LOG_INFO, "Config reloaded from $file");
+	my $new = Config::Simple->new($file)->hashref;
+	if (!check_config($new)) {
+		syslog(LOG_CRIT, "Configuration is invalid");
+
+	} else {
+		$config = $new;
+		syslog(LOG_INFO, "Config reloaded from $file");
+
+	}
+}
+
+sub check_config {
+	my $config = shift;
+
+	return undef if (
+		(int($config->{'dsd.interval'}) ne $config->{'dsd.interval'} || $config->{'dsd.interval'} < 1) ||
+		(int($config->{'dsd.sample'})   ne $config->{'dsd.sample'}   || $config->{'dsd.sample'} < 1) ||
+		(length($config->{'dsd.sample'}) < 1) ||
+		(length($config->{'dsd.url'}) < 1)
+	);
 }
