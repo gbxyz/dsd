@@ -119,7 +119,7 @@ sub process_packet {
 		reverse
 		sort { length($a) <=> length($b) }
 		grep { lc($_) eq lc($q->qname) || $q->qname =~ /\.$_$/i }
-		split(',', $config->{'dsd.zones'})
+		(ref($config->{'dsd.zones'}) eq 'ARRAY' ? @{$config->{'dsd.zones'}} : split(',', $config->{'dsd.zones'}))
 	)[0] || 'other';
 
 	$stats->{'zones'}->{$zone}->{'queries'}                       += $config->{'dsd.sample'};
