@@ -1,4 +1,6 @@
 #!/usr/bin/perl
+# Copyright 2014 CentralNic Ltd. This program is free software; you can
+# redistribute it and/or modify it under the same terms as Perl itself.
 use Config::Simple;
 use Getopt::Long;
 use HTTP::Request::Common;
@@ -17,15 +19,15 @@ use Time::HiRes qw(time ualarm);
 use strict;
 
 my $file = '/etc/dsd.conf';
-my $debug = undef;
+my $device = 'eth0';
+my $foreground = undef;
 GetOptions(
-	'file=s' => \$file,
-	'debug' => \$debug,
+	'file=s'     => \$file,
+	'foreground' => \$foreground,
+	'device'     => \$device,
 );
 
 my $config = Config::Simple->new($file)->hashref;
-
-my $device = $ARGV[0] || 'eth0';
 
 my ($network, $mask, $error);
 die($error) unless (0 == Net::Pcap::lookupnet($device, \$network, \$mask, \$error));
@@ -48,6 +50,18 @@ $SIG{'HUP'} = \&hup_handler;
 
 $SIG{'ALRM'} = \&alrm_handler;
 ualarm($config->{'dsd.interval'} * 1000 * 1000);
+
+unless ($foreground) {
+	if (fork() > 0) {
+		exit(0);
+
+	} else {
+		setsid();
+		chdir('/');
+		$0 = '[dsd]';
+
+	}
+}
 
 Net::Pcap::loop($pcap, -1, \&process_packet, undef);
 
@@ -106,10 +120,10 @@ sub process_packet {
 		split(',', $config->{'dsd.zones'})
 	)[0] || 'other';
 
-	$stats->{'zones'}->{$zone}->{'queries'}							+= $config->{'dsd.sample'};
-	$stats->{'zones'}->{$zone}->{'families'}->{$family}				+= $config->{'dsd.sample'};
-	$stats->{'zones'}->{$zone}->{'protos'}->{$proto}				+= $config->{'dsd.sample'};
-	$stats->{'zones'}->{$zone}->{'rcodes'}->{$dns->header->rcode}	+= $config->{'dsd.sample'};
+	$stats->{'zones'}->{$zone}->{'queries'}                       += $config->{'dsd.sample'};
+	$stats->{'zones'}->{$zone}->{'families'}->{$family}           += $config->{'dsd.sample'};
+	$stats->{'zones'}->{$zone}->{'protos'}->{$proto}              += $config->{'dsd.sample'};
+	$stats->{'zones'}->{$zone}->{'rcodes'}->{$dns->header->rcode} += $config->{'dsd.sample'};
 }
 
 sub alrm_handler {
