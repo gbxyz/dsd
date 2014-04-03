@@ -1,0 +1,132 @@
+#!/usr/bin/perl
+use Config::Simple;
+use Getopt::Long;
+use HTTP::Request::Common;
+use JSON;
+use LWP::UserAgent;
+use Net::DNS::Packet;
+use Net::Pcap;
+use NetPacket::Ethernet qw(:strip ETH_TYPE_IP ETH_TYPE_IPv6);
+use NetPacket::IP qw(:strip :protos);
+use NetPacket::IPv6 qw(:strip);
+use NetPacket::TCP qw(:strip);
+use NetPacket::UDP qw(:strip);
+use POSIX;
+use Sys::Syslog qw(:standard :macros);
+use Time::HiRes qw(time ualarm);
+use strict;
+
+my $file = '/etc/dsd.conf';
+my $debug = undef;
+GetOptions(
+	'file=s' => \$file,
+	'debug' => \$debug,
+);
+
+my $config = Config::Simple->new($file)->hashref;
+
+my $device = $ARGV[0] || 'eth0';
+
+my ($network, $mask, $error);
+die($error) unless (0 == Net::Pcap::lookupnet($device, \$network, \$mask, \$error));
+
+die($error) unless (my $pcap = Net::Pcap::open_live($device, 1500, 0, 1000, \$error));
+
+my $filter;
+Net::Pcap::compile($pcap, \$filter, "src port 53", 1, 0);
+Net::Pcap::setfilter($pcap, $filter);
+
+my $stats = { 'start' => time() };
+
+my $counter = 0;
+
+openlog('dsd', 'ndelay,perror,pid', LOG_DAEMON);
+
+my $ua = LWP::UserAgent->new;
+
+$SIG{'HUP'} = \&hup_handler;
+
+$SIG{'ALRM'} = \&alrm_handler;
+ualarm($config->{'dsd.interval'} * 1000 * 1000);
+
+Net::Pcap::loop($pcap, -1, \&process_packet, undef);
+
+sub process_packet {
+	my (undef, $header, $data) = @_;
+
+	$counter++;
+	return unless (0 == $counter % $config->{'dsd.sample'});
+
+	my $eth = NetPacket::Ethernet->decode($data);
+	return if (!defined($eth));
+
+	my ($ip, $family);
+	if ($eth->{type} eq ETH_TYPE_IP) {
+		$family = 4;
+		$ip = NetPacket::IP->decode(eth_strip($data));
+
+	} elsif ($eth->{type} eq ETH_TYPE_IPv6) {
+		$family = 6;
+		$ip = NetPacket::IPv6->decode(eth_strip($data));
+
+	} else {
+		return;
+
+	}
+
+	my ($dns, $proto);
+	if ($ip->{proto} == IP_PROTO_TCP) {
+		my $tcp = NetPacket::TCP->decode($ip->{data});
+		return if (!defined($tcp));
+
+		# the first two bytes encode the packet length, remove:
+		my $data = substr($tcp->{data}, 2);
+
+		$dns = Net::DNS::Packet->new(\$data);
+
+		$proto = 'tcp';
+
+	} elsif ($ip->{proto} == IP_PROTO_UDP) {
+		my $udp = NetPacket::UDP->decode($ip->{data});
+		return if (!defined($udp));
+
+		$dns = Net::DNS::Packet->new(\$udp->{data});
+
+		$proto = 'udp';
+
+	}
+
+	return if (!defined($dns));
+
+	my $q = ($dns->question)[0];
+	my $zone = (
+		reverse
+		sort { length($a) <=> length($b) }
+		grep { lc($_) eq lc($q->qname) || $q->qname =~ /\.$_$/i }
+		split(',', $config->{'dsd.zones'})
+	)[0] || 'other';
+
+	$stats->{'zones'}->{$zone}->{'queries'}							+= $config->{'dsd.sample'};
+	$stats->{'zones'}->{$zone}->{'families'}->{$family}				+= $config->{'dsd.sample'};
+	$stats->{'zones'}->{$zone}->{'protos'}->{$proto}				+= $config->{'dsd.sample'};
+	$stats->{'zones'}->{$zone}->{'rcodes'}->{$dns->header->rcode}	+= $config->{'dsd.sample'};
+}
+
+sub alrm_handler {
+	$stats->{'end'} = time();
+
+	my $res = $ua->request(POST($config->{'dsd.url'}, 'Content' => to_json($stats), 'Content_Type' => 'application/json'));
+	if ($res->is_success) {
+		$stats = { 'start' => time() };
+		ualarm($config->{'dsd.interval'} * 1000 * 1000);
+
+	} else {
+		syslog(LOG_ERR, sprintf("Error posting to %s: %s", $config->{'dsd.submit_url'}, $res->status_line));
+
+	}
+}
+
+sub hup_handler {
+	$config = Config::Simple->new($file)->hashref;
+	syslog(LOG_INFO, "Config reloaded from $file");
+}
