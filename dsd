@@ -2,10 +2,10 @@
 # Copyright 2014 CentralNic Ltd. This program is free software; you can
 # redistribute it and/or modify it under the same terms as Perl itself.
 use Config::Simple;
+use Data::Dumper;
+use File::Temp qw(tempfile);
 use Getopt::Long;
-use HTTP::Request::Common;
 use JSON;
-use LWP::UserAgent;
 use Net::DNS::Packet;
 use Net::Pcap;
 use NetPacket::Ethernet qw(:strip ETH_TYPE_IP ETH_TYPE_IPv6);
@@ -14,39 +14,46 @@ use NetPacket::IPv6 qw(:strip);
 use NetPacket::TCP qw(:strip);
 use NetPacket::UDP qw(:strip);
 use POSIX;
+use Sys::Hostname;
 use Sys::Syslog qw(:standard :macros);
 use Time::HiRes qw(time ualarm);
 use strict;
+use warnings;
+
+openlog('dsd', 'ndelay,perror,pid', LOG_DAEMON);
 
 my $file = '/etc/dsd.conf';
-my $device = 'eth0';
 my $foreground = undef;
+my $debug = undef;
 GetOptions(
 	'config=s'   => \$file,
 	'foreground' => \$foreground,
-	'device'     => \$device,
+	'debug'      => \$debug,
 );
+
+$foreground = $foreground || $debug;
 
 my $config = Config::Simple->new($file)->hashref;
 
 check_config($config) || die("Bad config");
 
+syslog(LOG_DEBUG, "capturing packets on {$config->{'dsd.interface'}") if ($debug);
 my ($network, $mask, $error);
-die($error) unless (0 == Net::Pcap::lookupnet($device, \$network, \$mask, \$error));
+die($error) unless (0 == Net::Pcap::lookupnet($config->{'dsd.interface'}, \$network, \$mask, \$error));
 
-die($error) unless (my $pcap = Net::Pcap::open_live($device, 1500, 0, 1000, \$error));
+die($error) unless (my $pcap = Net::Pcap::open_live($config->{'dsd.interface'}, 1500, 0, 1000, \$error));
+
+my $fstr = "src port 53";
+syslog(LOG_DEBUG, $fstr) if ($debug);
 
 my $filter;
-Net::Pcap::compile($pcap, \$filter, "src port 53", 1, 0);
+Net::Pcap::compile($pcap, \$filter, $fstr, 1, 0);
 Net::Pcap::setfilter($pcap, $filter);
 
 my $stats = { 'start' => time() };
+init_stats();
 
 my $counter = 0;
-
-openlog('dsd', 'ndelay,perror,pid', LOG_DAEMON);
-
-my $ua = LWP::UserAgent->new;
 
 $SIG{'HUP'} = \&hup_handler;
 
@@ -54,6 +61,7 @@ $SIG{'ALRM'} = \&alrm_handler;
 ualarm($config->{'dsd.interval'} * 1000 * 1000);
 
 unless ($foreground) {
+	syslog(LOG_DEBUG, "daemonising") if ($debug);
 	if (fork() > 0) {
 		exit(0);
 
@@ -65,10 +73,13 @@ unless ($foreground) {
 	}
 }
 
+syslog(LOG_DEBUG, "entering loop") if ($debug);
 Net::Pcap::loop($pcap, -1, \&process_packet, undef);
 
 sub process_packet {
 	my (undef, $header, $data) = @_;
+
+#	syslog(LOG_DEBUG, "received packet") if ($debug);
 
 	$counter++;
 	return unless (0 == $counter % $config->{'dsd.sample'});
@@ -114,12 +125,14 @@ sub process_packet {
 
 	return if (!defined($dns));
 
+#	map { syslog(LOG_DEBUG, $_) } split(/\n/, $dns->string) if ($debug);
+
 	my $q = ($dns->question)[0];
 	my $zone = (
 		reverse
 		sort { length($a) <=> length($b) }
 		grep { lc($_) eq lc($q->qname) || $q->qname =~ /\.$_$/i }
-		(ref($config->{'dsd.zones'}) eq 'ARRAY' ? @{$config->{'dsd.zones'}} : split(',', $config->{'dsd.zones'}))
+		get_zones()
 	)[0] || 'other';
 
 	$stats->{'zones'}->{$zone}->{'queries'}                       += $config->{'dsd.sample'};
@@ -129,25 +142,53 @@ sub process_packet {
 }
 
 sub alrm_handler {
+	syslog(LOG_DEBUG, "ALRM received") if ($debug);
+
 	$stats->{'end'} = time();
 
-	my $res = $ua->request(POST($config->{'dsd.url'}, 'Content' => to_json($stats), 'Content_Type' => 'application/json'));
-	if ($res->is_success) {
-		$stats = { 'start' => time() };
-		ualarm($config->{'dsd.interval'} * 1000 * 1000);
+	map { syslog(LOG_DEBUG, $_) } split(/\n/, Dumper($stats)) if ($debug);
+
+	my $data = JSON->new->pretty->encode($stats);
+
+	map { syslog(LOG_DEBUG, $_) } split(/\n/, $data) if ($debug);
+
+	my ($fh, $file) = tempfile('SUFFIX' => '.js');
+	$fh->print($data);
+	$fh->close;
+
+	my @cmd = (
+		'scp',
+		'-q',
+		'-i', $config->{'dsd.ssh_key'},
+		$file,
+		sprintf('%s@%s:%s', $config->{'dsd.ssh_user'}, $config->{'dsd.ssh_server'}, (defined($config->{'dsd.ssh_directory'}) ? $config->{'dsd.ssh_directory'}.'/' : '')),
+	);
+	syslog(LOG_DEBUG, join(' ', @cmd)) if ($debug);
+
+	system(@cmd);
+	my $code = $? >> 8;
+	if ($code > 0) {
+		syslog(LOG_CRIT, "Failed to submit stats (code $code)");
 
 	} else {
-		syslog(LOG_ERR, sprintf("Error posting to %s: %s", $config->{'dsd.submit_url'}, $res->status_line));
+		init_stats();
 
 	}
+
+	unlink($file);
+
+	ualarm($config->{'dsd.interval'} * 1000 * 1000);
 }
 
 sub hup_handler {
+	syslog(LOG_DEBUG, "HUP received") if ($debug);
 	my $new = Config::Simple->new($file)->hashref;
 	if (!check_config($new)) {
 		syslog(LOG_CRIT, "Configuration is invalid");
 
 	} else {
+		syslog(LOG_WARNING, "Warning: interface has changed, please restart the daemon") if ($new->{'dsd.interface'} ne $config->{'dsd.interface'});
+
 		$config = $new;
 		syslog(LOG_INFO, "Config reloaded from $file");
 
@@ -156,11 +197,24 @@ sub hup_handler {
 
 sub check_config {
 	my $config = shift;
-
 	return (
 		(int($config->{'dsd.interval'}) eq $config->{'dsd.interval'} && $config->{'dsd.interval'}  > 0) &&
 		(int($config->{'dsd.sample'})   eq $config->{'dsd.sample'}   && $config->{'dsd.sample'} > 0) &&
 		(defined($config->{'dsd.zones'})) &&
-		(length($config->{'dsd.url'}) > 0)
+		(length($config->{'dsd.ssh_server'}) > 0) &&
+		(length($config->{'dsd.ssh_user'}) > 0) &&
+		(length($config->{'dsd.ssh_key'}) > 0) &&
+		(!defined($config->{'dsd.ssh_directory'}) || length($config->{'dsd.ssh_directory'}) > 0)
 	);
+}
+
+sub init_stats {
+	$stats = {
+		'start' => time(),
+		'host' => hostname(),
+	};
+}
+
+sub get_zones {
+	return (ref($config->{'dsd.zones'}) eq 'ARRAY' ? @{$config->{'dsd.zones'}} : split(',', $config->{'dsd.zones'}));
 }
