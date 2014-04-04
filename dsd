@@ -13,6 +13,7 @@ use NetPacket::IP qw(:strip :protos);
 use NetPacket::IPv6 qw(:strip);
 use NetPacket::TCP qw(:strip);
 use NetPacket::UDP qw(:strip);
+use Pod::Usage;
 use POSIX;
 use Sys::Hostname;
 use Sys::Syslog qw(:standard :macros);
@@ -22,13 +23,17 @@ use strict;
 openlog('dsd', 'ndelay,perror,pid', LOG_DAEMON);
 
 my $file = '/etc/dsd.conf';
-my $foreground = undef;
-my $debug = undef;
+my $foreground;
+my $debug;
+my $help;
 GetOptions(
 	'config=s'   => \$file,
 	'foreground' => \$foreground,
 	'debug'      => \$debug,
+	'help'       => \$help,
 );
+
+pod2usage('-verbose' => 99, '-sections' => 'USAGE|OPTIONS') if ($help);
 
 $foreground = $foreground || $debug;
 
@@ -77,8 +82,6 @@ Net::Pcap::loop($pcap, -1, \&process_packet, undef);
 
 sub process_packet {
 	my (undef, $header, $data) = @_;
-
-	syslog(LOG_DEBUG, "received packet") if ($debug);
 
 	$counter++;
 	return unless (0 == $counter % $config->{'dsd.sample'});
@@ -159,7 +162,7 @@ sub alrm_handler {
 		'-q',
 		'-i', $config->{'dsd.ssh_key'},
 		$file,
-		sprintf('%s@%s:%s', $config->{'dsd.ssh_user'}, $config->{'dsd.ssh_server'}, (defined($config->{'dsd.ssh_directory'}) ? $config->{'dsd.ssh_directory'}.'/' : '')),
+		sprintf('%s@%s:%s', $config->{'dsd.ssh_user'}, $config->{'dsd.ssh_server'}, ($config->{'dsd.ssh_directory'} ne '' ? $config->{'dsd.ssh_directory'}.'/' : '')),
 	);
 	syslog(LOG_DEBUG, join(' ', @cmd)) if ($debug);
 
@@ -216,3 +219,96 @@ sub init_stats {
 sub get_zones {
 	return (ref($config->{'dsd.zones'}) eq 'ARRAY' ? @{$config->{'dsd.zones'}} : split(',', $config->{'dsd.zones'}));
 }
+
+__END__
+
+=head1 NAME
+
+DSD - a simple DNS Statistics collecting Daemon
+
+=head1 DESCRIPTION
+
+DSD is a simple system for capturing and aggregating statistical information
+about DNS servers. It is somewhat similar to DSC, but is a great deal simpler.
+
+DSD consists of two parts: The C<dsd> script runs on the DNS server, captures
+packets using C<Net::Pcap>, disassembles them using C<NetPacket>, and analyses
+them using C<Net::DNS>. Every now and then, it will serialise its data into a
+blob of JSON and copy it to a remote server.
+
+A separate script (which does not currently exist) then imports the data in the
+JSON files into a database. The data is then used by a number of Munin plugins
+(which also do not currently exist) which present the data to the user.
+
+=head1 USAGE
+
+	dsd [OPTIONS]
+
+=head1 OPTIONS
+
+=over
+
+=item --config=FILE
+
+Specify config file. Defaults to /etc/dsd/dsd.conf
+
+=item --foreground
+
+Don't daemonise.
+
+=item --debug
+
+Enable debugging. Implies --foreground
+
+=item --help
+
+Show help
+
+=head1 CONFIGURATION FILE
+
+	[dsd]
+	; interface to capture packets on
+	interface=eth0
+
+	; capture 1/sample packets
+	sample=1
+
+	; submit data every interval seconds
+	interval=300
+
+	; list of zones you're interested in
+	zones="foo,bar"
+
+	; server to submit stats to
+	ssh_server=example.com
+
+	; SSH username
+	ssh_user=example
+
+	; SSH private key
+	ssh_key=/home/example/.ssh/id_rsa
+
+	; directory (optional)
+	ssh_directory=/var/tmp/dsd
+
+=head1 SEE ALSO
+
+=over
+
+=item L<https://www.centralnic.com/>
+
+=item L<http://www.net-dns.org/>
+
+=item L<http://dns.measurement-factory.com/tools/dsc/>
+
+=item L<http://munin-monitoring.org/>
+
+=back
+
+=head1 COPYRIGHT
+
+dsd is Copyright 2014 CentralNic Ltd. All rights reserved. This program is free
+software; you can redistribute it and/or modify it under the same terms as Perl
+itself.
+
+=cut
