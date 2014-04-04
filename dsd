@@ -18,7 +18,6 @@ use Sys::Hostname;
 use Sys::Syslog qw(:standard :macros);
 use Time::HiRes qw(time ualarm);
 use strict;
-use warnings;
 
 openlog('dsd', 'ndelay,perror,pid', LOG_DAEMON);
 
@@ -37,7 +36,7 @@ my $config = Config::Simple->new($file)->hashref;
 
 check_config($config) || die("Bad config");
 
-syslog(LOG_DEBUG, "capturing packets on {$config->{'dsd.interface'}") if ($debug);
+syslog(LOG_DEBUG, "capturing packets on $config->{'dsd.interface'}") if ($debug);
 my ($network, $mask, $error);
 die($error) unless (0 == Net::Pcap::lookupnet($config->{'dsd.interface'}, \$network, \$mask, \$error));
 
@@ -79,7 +78,7 @@ Net::Pcap::loop($pcap, -1, \&process_packet, undef);
 sub process_packet {
 	my (undef, $header, $data) = @_;
 
-#	syslog(LOG_DEBUG, "received packet") if ($debug);
+	syslog(LOG_DEBUG, "received packet") if ($debug);
 
 	$counter++;
 	return unless (0 == $counter % $config->{'dsd.sample'});
@@ -125,9 +124,8 @@ sub process_packet {
 
 	return if (!defined($dns));
 
-#	map { syslog(LOG_DEBUG, $_) } split(/\n/, $dns->string) if ($debug);
-
 	my $q = ($dns->question)[0];
+	syslog(LOG_DEBUG, $q->string) if ($debug);
 	my $zone = (
 		reverse
 		sort { length($a) <=> length($b) }
