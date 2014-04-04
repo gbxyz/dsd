@@ -77,11 +77,3 @@ JSON files into a database. The data is then used by a number of Munin plugins
 dsd is Copyright 2014 CentralNic Ltd. All rights reserved. This program is free
 software; you can redistribute it and/or modify it under the same terms as Perl
 itself.
-
-# POD ERRORS
-
-Hey! __The above document had some coding errors, which are explained below:__
-
-- Around line 267:
-
-    You forgot a '=back' before '=head1'

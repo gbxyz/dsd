@@ -264,6 +264,8 @@ Enable debugging. Implies --foreground
 
 Show help
 
+=back
+
 =head1 CONFIGURATION FILE
 
 	[dsd]
