@@ -86,48 +86,51 @@ sub process_packet {
 	$counter++;
 	return unless (0 == $counter % $config->{'dsd.sample'});
 
-	my $eth = NetPacket::Ethernet->decode($data);
-	return if (!defined($eth));
+	my ($eth, $ip, $family, $dns, $proto, $q);
+	eval {
+		$eth = NetPacket::Ethernet->decode($data);
+		return unless (defined($eth));
 
-	my ($ip, $family);
-	if ($eth->{type} eq ETH_TYPE_IP) {
-		$family = 4;
-		$ip = NetPacket::IP->decode(eth_strip($data));
+		if ($eth->{'type'} eq ETH_TYPE_IP) {
+			$family = 4;
+			$ip = NetPacket::IP->decode(eth_strip($data));
 
-	} elsif ($eth->{type} eq ETH_TYPE_IPv6) {
-		$family = 6;
-		$ip = NetPacket::IPv6->decode(eth_strip($data));
+		} elsif ($eth->{'type'} eq ETH_TYPE_IPv6) {
+			$family = 6;
+			$ip = NetPacket::IPv6->decode(eth_strip($data));
 
-	} else {
-		return;
+		} else {
+			return;
 
-	}
+		}
 
-	my ($dns, $proto);
-	if ($ip->{proto} == IP_PROTO_TCP) {
-		my $tcp = NetPacket::TCP->decode($ip->{data});
-		return if (!defined($tcp));
+		if ($ip->{'proto'} == IP_PROTO_TCP) {
+			my $tcp = NetPacket::TCP->decode($ip->{'data'});
+			return unless (defined($tcp));
 
-		# the first two bytes encode the packet length, remove:
-		my $data = substr($tcp->{data}, 2);
+			# the first two bytes encode the packet length, remove:
+			my $data = substr($tcp->{'data'}, 2);
 
-		$dns = Net::DNS::Packet->new(\$data);
+			$dns = Net::DNS::Packet->new(\$data);
 
-		$proto = 'tcp';
+			$proto = 'tcp';
 
-	} elsif ($ip->{proto} == IP_PROTO_UDP) {
-		my $udp = NetPacket::UDP->decode($ip->{data});
-		return if (!defined($udp));
+		} elsif ($ip->{'proto'} == IP_PROTO_UDP) {
+			my $udp = NetPacket::UDP->decode($ip->{'data'});
+			return unless (defined($udp));
 
-		$dns = Net::DNS::Packet->new(\$udp->{data});
+			$dns = Net::DNS::Packet->new(\$udp->{'data'});
 
-		$proto = 'udp';
+			$proto = 'udp';
 
-	}
+		}
 
-	return if (!defined($dns));
+		return unless (defined($dns));
 
-	my $q = ($dns->question)[0];
+		$q = ($dns->question)[0];
+		return unless ($q);
+	};
+
 	syslog(LOG_DEBUG, $q->string) if ($debug);
 	my $zone = (
 		reverse
@@ -157,12 +160,19 @@ sub alrm_handler {
 	$fh->print($data);
 	$fh->close;
 
+	my $dst = sprintf(
+		'%s@%s:%s',
+		$config->{'dsd.ssh_user'},
+		$config->{'dsd.ssh_server'},
+		($config->{'dsd.ssh_directory'} ne '' ? $config->{'dsd.ssh_directory'}.'/' : '')
+	);
+
 	my @cmd = (
 		'scp',
 		'-q',
 		'-i', $config->{'dsd.ssh_key'},
 		$file,
-		sprintf('%s@%s:%s', $config->{'dsd.ssh_user'}, $config->{'dsd.ssh_server'}, ($config->{'dsd.ssh_directory'} ne '' ? $config->{'dsd.ssh_directory'}.'/' : '')),
+		$dst,
 	);
 	syslog(LOG_DEBUG, join(' ', @cmd)) if ($debug);
 
