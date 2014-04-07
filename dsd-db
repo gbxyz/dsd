@@ -100,7 +100,7 @@ sub parse_json {
 }
 __END__
 
-__END__
+=pod
 
 =HEAD1 NAME
 
