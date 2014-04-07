@@ -128,21 +128,31 @@ sub process_packet {
 		return unless (defined($dns));
 
 		$q = ($dns->question)[0];
-		return unless ($q);
+		return unless (defined($q));
 	};
 
-	syslog(LOG_DEBUG, $q->string) if ($debug);
-	my $zone = (
-		reverse
-		sort { length($a) <=> length($b) }
-		grep { lc($_) eq lc($q->qname) || $q->qname =~ /\.$_$/i }
-		get_zones()
-	)[0] || 'other';
+	if ($@) {
+		chmomp($@);
+		syslog(LOG_INFO, $@);
+		return;
 
-	$stats->{'zones'}->{$zone}->{'queries'}                       += $config->{'dsd.sample'};
-	$stats->{'zones'}->{$zone}->{'families'}->{$family}           += $config->{'dsd.sample'};
-	$stats->{'zones'}->{$zone}->{'protos'}->{$proto}              += $config->{'dsd.sample'};
-	$stats->{'zones'}->{$zone}->{'rcodes'}->{$dns->header->rcode} += $config->{'dsd.sample'};
+	} elsif (!defined($q)) {
+		return;
+
+	} else {
+		syslog(LOG_DEBUG, $q->string) if ($debug);
+		my $zone = (
+			reverse
+			sort { length($a) <=> length($b) }
+			grep { lc($_) eq lc($q->qname) || $q->qname =~ /\.$_$/i }
+			get_zones()
+		)[0] || 'other';
+
+		$stats->{'zones'}->{$zone}->{'queries'}                       += $config->{'dsd.sample'};
+		$stats->{'zones'}->{$zone}->{'families'}->{$family}           += $config->{'dsd.sample'};
+		$stats->{'zones'}->{$zone}->{'protos'}->{$proto}              += $config->{'dsd.sample'};
+		$stats->{'zones'}->{$zone}->{'rcodes'}->{$dns->header->rcode} += $config->{'dsd.sample'};
+	}
 }
 
 sub alrm_handler {
