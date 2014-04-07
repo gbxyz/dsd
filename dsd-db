@@ -153,6 +153,31 @@ Show help.
 	; 0 to leave files on disk, 1 to delete them once processed
 	delete=1
 
+=head1 DATABASE SCHEMA
+
+The following SQL statements can be used to configure an SQLite database for
+use with C<dsd-db>. You will need to modify them if you want to use a different
+database:
+
+	# the 'files' table stores a record of all the files that
+	# have been processed:
+	CREATE TABLE `files` (
+		`filename`  VARCHAR,
+		`processed` DATETIME
+	);
+
+	# the 'data' table stores the actual data:
+	CREATE TABLE `data` (
+		`host`    VARCHAR,
+		`start`   DATETIME,
+		`end`     DATETIME,
+		`zone`    VARCHAR,
+		`family`  INTEGER,
+		`proto`   CHAR(3),
+		`rcode`   VARCHAR,
+		`queries` INTEGER
+	);
+
 =head1 COPYRIGHT
 
 dsd is Copyright 2014 CentralNic Ltd. All rights reserved. This program is free
