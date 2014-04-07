@@ -242,23 +242,21 @@ sub get_zones {
 
 __END__
 
-=head1 NAME
+=HEAD1 NAME
 
-DSD - a simple DNS Statistics collecting Daemon
+DSD - A Simple DNS Statistics Collecting Daemon
 
-=head1 DESCRIPTION
+=HEAD1 DESCRIPTION
 
 DSD is a simple system for capturing and aggregating statistical information
 about DNS servers. It is somewhat similar to DSC, but is a great deal simpler.
 
-DSD consists of two parts: The C<dsd> script runs on the DNS server, captures
+DSD consists of three parts. The C<dsd> script runs on the DNS server, captures
 packets using C<Net::Pcap>, disassembles them using C<NetPacket>, and analyses
 them using C<Net::DNS>. Every now and then, it will serialise its data into a
-blob of JSON and copy it to a remote server.
-
-A separate script (which does not currently exist) then imports the data in the
-JSON files into a database. The data is then used by a number of Munin plugins
-(which also do not currently exist) which present the data to the user.
+blob of JSON and copy it to a remote server. The C<dsd-db> script then imports
+the data in the JSON files into a database. The data is then used by a number of
+Munin plugins (which do not currently exist) which present the data to the user.
 
 =head1 USAGE
 
@@ -270,7 +268,7 @@ JSON files into a database. The data is then used by a number of Munin plugins
 
 =item --config=FILE
 
-Specify config file. Defaults to /etc/dsd/dsd.conf
+Specify config file. Defaults to /etc/dsd/dsd.conf.
 
 =item --foreground
 
@@ -278,15 +276,15 @@ Don't daemonise.
 
 =item --debug
 
-Enable debugging. Implies --foreground
+Enable debugging. Implies --foreground.
 
 =item --help
 
-Show help
+Show help.
 
 =back
 
-=head1 CONFIGURATION FILE
+=head1 CONFIGURATION OPTIONS
 
 	[dsd]
 	; interface to capture packets on

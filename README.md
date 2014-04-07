@@ -1,20 +1,14 @@
-# NAME
-
-DSD - a simple DNS Statistics collecting Daemon
-
-# DESCRIPTION
+DSD - A Simple DNS Statistics Collecting Daemon
 
 DSD is a simple system for capturing and aggregating statistical information
 about DNS servers. It is somewhat similar to DSC, but is a great deal simpler.
 
-DSD consists of two parts: The `dsd` script runs on the DNS server, captures
+DSD consists of three parts. The `dsd` script runs on the DNS server, captures
 packets using `Net::Pcap`, disassembles them using `NetPacket`, and analyses
 them using `Net::DNS`. Every now and then, it will serialise its data into a
-blob of JSON and copy it to a remote server.
-
-A separate script (which does not currently exist) then imports the data in the
-JSON files into a database. The data is then used by a number of Munin plugins
-(which also do not currently exist) which present the data to the user.
+blob of JSON and copy it to a remote server. The `dsd-db` script then imports
+the data in the JSON files into a database. The data is then used by a number of
+Munin plugins (which do not currently exist) which present the data to the user.
 
 # USAGE
 
@@ -24,7 +18,7 @@ JSON files into a database. The data is then used by a number of Munin plugins
 
 - --config=FILE
 
-    Specify config file. Defaults to /etc/dsd/dsd.conf
+    Specify config file. Defaults to /etc/dsd/dsd.conf.
 
 - --foreground
 
@@ -32,13 +26,13 @@ JSON files into a database. The data is then used by a number of Munin plugins
 
 - --debug
 
-    Enable debugging. Implies --foreground
+    Enable debugging. Implies --foreground.
 
 - --help
 
-    Show help
+    Show help.
 
-# CONFIGURATION FILE
+# CONFIGURATION OPTIONS
 
         [dsd]
         ; interface to capture packets on
@@ -77,3 +71,15 @@ JSON files into a database. The data is then used by a number of Munin plugins
 dsd is Copyright 2014 CentralNic Ltd. All rights reserved. This program is free
 software; you can redistribute it and/or modify it under the same terms as Perl
 itself.
+
+# POD ERRORS
+
+Hey! __The above document had some coding errors, which are explained below:__
+
+- Around line 245:
+
+    Unknown directive: =HEAD1
+
+- Around line 249:
+
+    Unknown directive: =HEAD1
