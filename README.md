@@ -1,4 +1,8 @@
+# NAME
+
 DSD - A Simple DNS Statistics Collecting Daemon
+
+# DESCRIPTION
 
 DSD is a simple system for capturing and aggregating statistical information
 about DNS servers. It is somewhat similar to DSC, but is a great deal simpler.
@@ -71,15 +75,3 @@ Munin plugins (which do not currently exist) which present the data to the user.
 dsd is Copyright 2014 CentralNic Ltd. All rights reserved. This program is free
 software; you can redistribute it and/or modify it under the same terms as Perl
 itself.
-
-# POD ERRORS
-
-Hey! __The above document had some coding errors, which are explained below:__
-
-- Around line 245:
-
-    Unknown directive: =HEAD1
-
-- Around line 249:
-
-    Unknown directive: =HEAD1

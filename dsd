@@ -242,11 +242,11 @@ sub get_zones {
 
 __END__
 
-=HEAD1 NAME
+=head1 NAME
 
 DSD - A Simple DNS Statistics Collecting Daemon
 
-=HEAD1 DESCRIPTION
+=head1 DESCRIPTION
 
 DSD is a simple system for capturing and aggregating statistical information
 about DNS servers. It is somewhat similar to DSC, but is a great deal simpler.
