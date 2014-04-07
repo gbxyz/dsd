@@ -41,7 +41,9 @@ my $fisth = $db->prepare("INSERT INTO files (filename, processed) VALUES (?, ?)"
 my $disth = $db->prepare("INSERT INTO data
 						(host, start, end, zone, family, proto, rcode, queries)
 						VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-						
+
+$db->do("BEGIN TRANSACTION");
+
 my @families = qw(4 6);
 my @protos = qw(udp tcp);
 my @rcodes = keys(%Net::DNS::rcodesbyname);
@@ -77,6 +79,8 @@ if ($stdin) {
 		unlink($file) if (1 == $config->{'db.delete'});
 	}
 }
+
+$db->do("COMMIT TRANSACTION");
 
 syslog(LOG_DEBUG, "done");
 
