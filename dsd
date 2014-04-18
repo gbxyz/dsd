@@ -132,7 +132,7 @@ sub process_packet {
 	};
 
 	if ($@) {
-		chmomp($@);
+		chomp($@);
 		syslog(LOG_INFO, $@);
 		return;
 
@@ -148,10 +148,12 @@ sub process_packet {
 			get_zones()
 		)[0] || 'other';
 
-		$stats->{'zones'}->{$zone}->{'queries'}                       += $config->{'dsd.sample'};
-		$stats->{'zones'}->{$zone}->{'families'}->{$family}           += $config->{'dsd.sample'};
-		$stats->{'zones'}->{$zone}->{'protos'}->{$proto}              += $config->{'dsd.sample'};
-		$stats->{'zones'}->{$zone}->{'rcodes'}->{$dns->header->rcode} += $config->{'dsd.sample'};
+		my $rcode = { eval $dns->header->rcode } || 'SERVFAIL';
+
+		$stats->{'zones'}->{$zone}->{'queries'}             += $config->{'dsd.sample'};
+		$stats->{'zones'}->{$zone}->{'families'}->{$family} += $config->{'dsd.sample'};
+		$stats->{'zones'}->{$zone}->{'protos'}->{$proto}    += $config->{'dsd.sample'};
+		$stats->{'zones'}->{$zone}->{'rcodes'}->{$rcode}    += $config->{'dsd.sample'};
 	}
 }
 
