@@ -150,7 +150,7 @@ sub process_packet {
 			get_zones()
 		)[0] || 'other';
 
-		my $rcode = { eval $dns->header->rcode } || 'SERVFAIL';
+		my $rcode = eval { $dns->header->rcode } || 'SERVFAIL';
 
 		$stats->{'zones'}->{$zone}->{'queries'}             += $config->{'dsd.sample'};
 		$stats->{'zones'}->{$zone}->{'families'}->{$family} += $config->{'dsd.sample'};
