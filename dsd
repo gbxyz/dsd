@@ -25,12 +25,14 @@ openlog('dsd', 'ndelay,perror,pid', LOG_DAEMON);
 my $file = '/etc/dsd.conf';
 my $foreground;
 my $debug;
+my $debug_queries;
 my $help;
 GetOptions(
-	'config=s'   => \$file,
-	'foreground' => \$foreground,
-	'debug'      => \$debug,
-	'help'       => \$help,
+	'config=s'      => \$file,
+	'foreground'    => \$foreground,
+	'debug'         => \$debug,
+	'debug-queries' => \$debug_queries,
+	'help'          => \$help,
 );
 
 pod2usage('-verbose' => 99, '-sections' => 'USAGE|OPTIONS') if ($help);
@@ -140,7 +142,7 @@ sub process_packet {
 		return;
 
 	} else {
-		syslog(LOG_DEBUG, $q->string) if ($debug);
+		syslog(LOG_DEBUG, $q->string) if ($debug && $debug_queries);
 		my $zone = (
 			reverse
 			sort { length($a) <=> length($b) }
@@ -279,6 +281,11 @@ Don't daemonise.
 =item --debug
 
 Enable debugging. Implies --foreground.
+
+=item --debug-queries
+
+Include DNS queries observed in debugging output. Ignored unless --debug is
+used.
 
 =item --help
 
