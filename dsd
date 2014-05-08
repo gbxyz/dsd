@@ -185,6 +185,7 @@ sub alrm_handler {
 		'scp',
 		'-q',
 		'-i', $config->{'dsd.ssh_key'},
+		'-o', sprintf('ConnectTimeout=%d', ($config->{'dsd.timeout'} || 10)),
 		$file,
 		$dst,
 	);
