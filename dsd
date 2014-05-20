@@ -5,7 +5,7 @@ use Config::Simple;
 use Data::Dumper;
 use File::Temp qw(tempfile);
 use Getopt::Long;
-use JSON;
+use JSON qw(encode_json);
 use Net::DNS::Packet;
 use Net::Pcap;
 use NetPacket::Ethernet qw(:strip ETH_TYPE_IP ETH_TYPE_IPv6);
@@ -143,10 +143,12 @@ sub process_packet {
 
 	} else {
 		syslog(LOG_DEBUG, $q->string) if ($debug && $debug_queries);
+		my $qname = eval { $q->qname };
+
 		my $zone = (
 			reverse
 			sort { length($a) <=> length($b) }
-			grep { lc($_) eq lc($q->qname) || $q->qname =~ /\.$_$/i }
+			grep { lc($_) eq lc($qname) || $qname =~ /\.$_$/i }
 			get_zones()
 		)[0] || 'other';
 
@@ -166,12 +168,8 @@ sub alrm_handler {
 
 	map { syslog(LOG_DEBUG, $_) } split(/\n/, Dumper($stats)) if ($debug);
 
-	my $data = JSON->new->pretty->encode($stats);
-
-	map { syslog(LOG_DEBUG, $_) } split(/\n/, $data) if ($debug);
-
 	my ($fh, $file) = tempfile('SUFFIX' => '.js');
-	$fh->print($data);
+	$fh->print(json_encode($stats));
 	$fh->close;
 
 	my $dst = sprintf(
@@ -193,16 +191,19 @@ sub alrm_handler {
 
 	system(@cmd);
 	my $code = $? >> 8;
+	syslog(LOG_DEBUG, "Command terminated with code $code");
 	if ($code > 0) {
 		syslog(LOG_CRIT, "Failed to submit stats (code $code)");
 
 	} else {
+		syslog(LOG_DEBUG, "Data submitted OK");
 		init_stats();
 
 	}
 
 	unlink($file);
 
+	debug_log("setting alarm for next transmission");
 	ualarm($config->{'dsd.interval'} * 1000 * 1000);
 }
 
