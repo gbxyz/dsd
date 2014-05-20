@@ -169,7 +169,7 @@ sub alrm_handler {
 	map { syslog(LOG_DEBUG, $_) } split(/\n/, Dumper($stats)) if ($debug);
 
 	my ($fh, $file) = tempfile('SUFFIX' => '.js');
-	$fh->print(json_encode($stats));
+	$fh->print(encode_json($stats));
 	$fh->close;
 
 	my $dst = sprintf(
