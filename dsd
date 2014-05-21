@@ -203,7 +203,7 @@ sub alrm_handler {
 
 	unlink($file);
 
-	debug_log("setting alarm for next transmission");
+	syslog(LOG_DEBUG, "setting alarm for next transmission");
 	ualarm($config->{'dsd.interval'} * 1000 * 1000);
 }
 
