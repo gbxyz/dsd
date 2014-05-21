@@ -166,8 +166,6 @@ sub alrm_handler {
 
 	$stats->{'end'} = time();
 
-	map { syslog(LOG_DEBUG, $_) } split(/\n/, Dumper($stats)) if ($debug);
-
 	my ($fh, $file) = tempfile('SUFFIX' => '.js');
 	$fh->print(encode_json($stats));
 	$fh->close;
