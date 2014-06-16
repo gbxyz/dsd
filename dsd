@@ -27,12 +27,14 @@ my $foreground;
 my $debug;
 my $debug_queries;
 my $help;
+my $once;
 GetOptions(
 	'config=s'      => \$file,
 	'foreground'    => \$foreground,
 	'debug'         => \$debug,
 	'debug-queries' => \$debug_queries,
 	'help'          => \$help,
+	'once'		=> \$once,
 );
 
 pod2usage('-verbose' => 99, '-sections' => 'USAGE|OPTIONS') if ($help);
@@ -195,6 +197,9 @@ sub alrm_handler {
 
 	} else {
 		syslog(LOG_DEBUG, "Data submitted OK");
+
+		exit if ($once);
+
 		init_stats();
 
 	}
@@ -286,6 +291,10 @@ Enable debugging. Implies --foreground.
 
 Include DNS queries observed in debugging output. Ignored unless --debug is
 used.
+
+=item --once
+
+Run for one loop then terminate.
 
 =item --help
 
