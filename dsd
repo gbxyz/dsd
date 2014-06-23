@@ -87,8 +87,13 @@ Net::Pcap::loop($pcap, -1, \&process_packet, undef);
 sub process_packet {
 	my (undef, $header, $data) = @_;
 
-	$counter++;
-	return unless (0 == $counter % $config->{'dsd.sample'});
+	if (0 == $counter % $config->{'dsd.sample'}) {
+		$counter++;
+
+	} else {
+		return;
+
+	}
 
 	my ($eth, $ip, $family, $dns, $proto, $q);
 	eval {
