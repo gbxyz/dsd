@@ -148,6 +148,7 @@ sub process_packet {
 	} else {
 		syslog(LOG_DEBUG, $q->string) if ($debug && $debug_queries);
 		my $qname = eval { $q->qname };
+		my $qtype = eval { $q->qtype };
 
 		my $zone = (
 			reverse
@@ -162,6 +163,7 @@ sub process_packet {
 		$stats->{'zones'}->{$zone}->{'families'}->{$family} += $config->{'dsd.sample'};
 		$stats->{'zones'}->{$zone}->{'protos'}->{$proto}    += $config->{'dsd.sample'};
 		$stats->{'zones'}->{$zone}->{'rcodes'}->{$rcode}    += $config->{'dsd.sample'};
+		$stats->{'zones'}->{$zone}->{'qtypes'}->{$qtypes}   += $config->{'dsd.sample'};
 
 		if (time() - $stats->{'start'} >= $config->{'dsd.interval'}) {
 			my ($fh, $file) = tempfile('SUFFIX' => '.js');
