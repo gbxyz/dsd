@@ -3,6 +3,7 @@
 # redistribute it and/or modify it under the same terms as Perl itself.
 use Config::Simple;
 use Data::Dumper;
+use File::Basename qw(basename);
 use File::Temp qw(tempfile);
 use Getopt::Long;
 use JSON qw(encode_json);
@@ -167,8 +168,10 @@ sub process_packet {
 			my ($fh, $file) = tempfile('SUFFIX' => '.js');
 			$fh->print(encode_json($stats));
 			$fh->close;
+			my $dest = $config->{'dsd.directory'}.'/'.basename($file);
+			rename($file, $dest);
 			init_stats();
-			syslog(LOG_DEBUG, "wrote data to $file") if ($debug);
+			syslog(LOG_DEBUG, "wrote data to $dest") if ($debug);
 		}
 	}
 }
