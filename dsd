@@ -163,7 +163,7 @@ sub process_packet {
 		$stats->{'zones'}->{$zone}->{'families'}->{$family} += $config->{'dsd.sample'};
 		$stats->{'zones'}->{$zone}->{'protos'}->{$proto}    += $config->{'dsd.sample'};
 		$stats->{'zones'}->{$zone}->{'rcodes'}->{$rcode}    += $config->{'dsd.sample'};
-		$stats->{'zones'}->{$zone}->{'qtypes'}->{$qtypes}   += $config->{'dsd.sample'};
+		$stats->{'zones'}->{$zone}->{'qtypes'}->{$qtype}    += $config->{'dsd.sample'};
 
 		if (time() - $stats->{'start'} >= $config->{'dsd.interval'}) {
 			my ($fh, $file) = tempfile('SUFFIX' => '.js');
