@@ -57,11 +57,6 @@ my $filter;
 Net::Pcap::compile($pcap, \$filter, $fstr, 1, 0);
 Net::Pcap::setfilter($pcap, $filter);
 
-my $stats = { 'start' => time() };
-init_stats();
-
-my $counter = 0;
-
 $SIG{'HUP'} = \&hup_handler;
 
 unless ($foreground) {
@@ -77,7 +72,10 @@ unless ($foreground) {
 	}
 }
 
-my $t0 = time();
+my $stats = { 'start' => time() };
+init_stats();
+
+my $counter = 0;
 
 syslog(LOG_DEBUG, "entering loop") if ($debug);
 Net::Pcap::loop($pcap, -1, \&process_packet, undef);
@@ -85,8 +83,9 @@ Net::Pcap::loop($pcap, -1, \&process_packet, undef);
 sub process_packet {
 	my (undef, $header, $data) = @_;
 
+	$counter++;
 	if (0 == $counter % $config->{'dsd.sample'}) {
-		$counter++;
+		$counter = 0;
 
 	} else {
 		return;
