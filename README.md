@@ -16,57 +16,49 @@ Munin plugins (which do not currently exist) which present the data to the user.
 
 # USAGE
 
-	dsd [OPTIONS]
+        dsd [OPTIONS]
 
 # OPTIONS
 
-- \--config=FILE
+- --config=FILE
 
     Specify config file. Defaults to /etc/dsd/dsd.conf.
 
-- \--foreground
+- --foreground
 
     Don't daemonise.
 
-- \--debug
+- --debug
 
     Enable debugging. Implies --foreground.
 
-- \--debug-queries
+- --debug-queries
 
     Include DNS queries observed in debugging output. Ignored unless --debug is
     used.
 
-- \--help
+- --once
+
+    Run for one loop then terminate.
+
+- --help
 
     Show help.
 
 # CONFIGURATION OPTIONS
 
-	[dsd]
-	; interface to capture packets on
-	interface=eth0
+        [dsd]
+        ; interface to capture packets on
+        interface=eth0
 
-	; capture 1/sample packets
-	sample=1
+        ; capture 1/sample packets
+        sample=1
 
-	; submit data every interval seconds
-	interval=300
+        ; dump data every interval seconds
+        interval=300
 
-	; list of zones you're interested in
-	zones="foo,bar"
-
-	; server to submit stats to
-	ssh_server=example.com
-
-	; SSH username
-	ssh_user=example
-
-	; SSH private key
-	ssh_key=/home/example/.ssh/id_rsa
-
-	; directory (optional)
-	ssh_directory=/var/tmp/dsd
+        ; list of zones you're interested in
+        zones="foo,bar"
 
 # SEE ALSO
 

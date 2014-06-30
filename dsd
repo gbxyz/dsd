@@ -27,14 +27,12 @@ my $foreground;
 my $debug;
 my $debug_queries;
 my $help;
-my $once;
 GetOptions(
 	'config=s'      => \$file,
 	'foreground'    => \$foreground,
 	'debug'         => \$debug,
 	'debug-queries' => \$debug_queries,
 	'help'          => \$help,
-	'once'		=> \$once,
 );
 
 pod2usage('-verbose' => 99, '-sections' => 'USAGE|OPTIONS') if ($help);
@@ -65,9 +63,6 @@ my $counter = 0;
 
 $SIG{'HUP'} = \&hup_handler;
 
-$SIG{'ALRM'} = \&alrm_handler;
-ualarm($config->{'dsd.interval'} * 1000 * 1000);
-
 unless ($foreground) {
 	syslog(LOG_DEBUG, "daemonising") if ($debug);
 	if (fork() > 0) {
@@ -80,6 +75,8 @@ unless ($foreground) {
 
 	}
 }
+
+my $t0 = time();
 
 syslog(LOG_DEBUG, "entering loop") if ($debug);
 Net::Pcap::loop($pcap, -1, \&process_packet, undef);
@@ -165,54 +162,15 @@ sub process_packet {
 		$stats->{'zones'}->{$zone}->{'families'}->{$family} += $config->{'dsd.sample'};
 		$stats->{'zones'}->{$zone}->{'protos'}->{$proto}    += $config->{'dsd.sample'};
 		$stats->{'zones'}->{$zone}->{'rcodes'}->{$rcode}    += $config->{'dsd.sample'};
+
+		if (time() - $stats->{'start'} >= $config->{'dsd.interval'}) {
+			my ($fh, $file) = tempfile('SUFFIX' => '.js');
+			$fh->print(encode_json($stats));
+			$fh->close;
+			init_stats();
+			syslog(LOG_DEBUG, "wrote data to $file") if ($debug);
+		}
 	}
-}
-
-sub alrm_handler {
-	syslog(LOG_DEBUG, "ALRM received") if ($debug);
-
-	$stats->{'end'} = time();
-
-	my ($fh, $file) = tempfile('SUFFIX' => '.js');
-	$fh->print(encode_json($stats));
-	$fh->close;
-
-	my $dst = sprintf(
-		'%s@%s:%s',
-		$config->{'dsd.ssh_user'},
-		$config->{'dsd.ssh_server'},
-		($config->{'dsd.ssh_directory'} ne '' ? $config->{'dsd.ssh_directory'}.'/' : '')
-	);
-
-	my @cmd = (
-		'scp',
-		'-q',
-		'-i', $config->{'dsd.ssh_key'},
-		'-o', sprintf('ConnectTimeout=%d', ($config->{'dsd.timeout'} || 10)),
-		$file,
-		$dst,
-	);
-	syslog(LOG_DEBUG, join(' ', @cmd)) if ($debug);
-
-	system(@cmd);
-	my $code = $? >> 8;
-	syslog(LOG_DEBUG, "Command terminated with code $code");
-	if ($code > 0) {
-		syslog(LOG_CRIT, "Failed to submit stats (code $code)");
-
-	} else {
-		syslog(LOG_DEBUG, "Data submitted OK");
-
-		exit if ($once);
-
-		init_stats();
-
-	}
-
-	unlink($file);
-
-	syslog(LOG_DEBUG, "setting alarm for next transmission");
-	ualarm($config->{'dsd.interval'} * 1000 * 1000);
 }
 
 sub hup_handler {
@@ -316,23 +274,11 @@ Show help.
 	; capture 1/sample packets
 	sample=1
 
-	; submit data every interval seconds
+	; dump data every interval seconds
 	interval=300
 
 	; list of zones you're interested in
 	zones="foo,bar"
-
-	; server to submit stats to
-	ssh_server=example.com
-
-	; SSH username
-	ssh_user=example
-
-	; SSH private key
-	ssh_key=/home/example/.ssh/id_rsa
-
-	; directory (optional)
-	ssh_directory=/var/tmp/dsd
 
 =head1 SEE ALSO
 
