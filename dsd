@@ -197,10 +197,7 @@ sub check_config {
 		(int($config->{'dsd.interval'}) eq $config->{'dsd.interval'} && $config->{'dsd.interval'}  > 0) &&
 		(int($config->{'dsd.sample'})   eq $config->{'dsd.sample'}   && $config->{'dsd.sample'} > 0) &&
 		(defined($config->{'dsd.zones'})) &&
-		(length($config->{'dsd.ssh_server'}) > 0) &&
-		(length($config->{'dsd.ssh_user'}) > 0) &&
-		(length($config->{'dsd.ssh_key'}) > 0) &&
-		(!defined($config->{'dsd.ssh_directory'}) || length($config->{'dsd.ssh_directory'}) > 0)
+		(length($config->{'dsd.directory'}) > 0)
 	);
 }
 
