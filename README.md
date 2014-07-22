@@ -2,18 +2,6 @@
 
 DSD - A Simple DNS Statistics Collecting Daemon
 
-# DESCRIPTION
-
-DSD is a simple system for capturing and aggregating statistical information
-about DNS servers. It is somewhat similar to DSC, but is a great deal simpler.
-
-DSD consists of three parts. The `dsd` script runs on the DNS server, captures
-packets using `Net::Pcap`, disassembles them using `NetPacket`, and analyses
-them using `Net::DNS`. Every now and then, it will serialise its data into a
-blob of JSON and copy it to a remote server. The `dsd-db` script then imports
-the data in the JSON files into a database. The data is then used by a number of
-Munin plugins (which do not currently exist) which present the data to the user.
-
 # USAGE
 
         dsd [OPTIONS]
@@ -62,6 +50,12 @@ Munin plugins (which do not currently exist) which present the data to the user.
 
 # SEE ALSO
 
+- `dsd-cp`, which copies DSD data files from the DNS server to a remote
+server.
+- `dsd-db`, which processes DSD data files and writes the data to a
+database.
+- `dsd-munin`, a Munin plugin for displaying graphs based on the DSD
+database.
 - [https://www.centralnic.com/](https://www.centralnic.com/)
 - [http://www.net-dns.org/](http://www.net-dns.org/)
 - [http://dns.measurement-factory.com/tools/dsc/](http://dns.measurement-factory.com/tools/dsc/)

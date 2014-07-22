@@ -166,6 +166,7 @@ sub process_packet {
 		$stats->{'zones'}->{$zone}->{'qtypes'}->{$qtype}    += $config->{'dsd.sample'};
 
 		if (time() - $stats->{'start'} >= $config->{'dsd.interval'}) {
+			$stats->{'end'} = time();
 			my ($fh, $file) = tempfile('SUFFIX' => '.js');
 			$fh->print(encode_json($stats));
 			$fh->close;
@@ -218,18 +219,6 @@ __END__
 =head1 NAME
 
 DSD - A Simple DNS Statistics Collecting Daemon
-
-=head1 DESCRIPTION
-
-DSD is a simple system for capturing and aggregating statistical information
-about DNS servers. It is somewhat similar to DSC, but is a great deal simpler.
-
-DSD consists of three parts. The C<dsd> script runs on the DNS server, captures
-packets using C<Net::Pcap>, disassembles them using C<NetPacket>, and analyses
-them using C<Net::DNS>. Every now and then, it will serialise its data into a
-blob of JSON and copy it to a remote server. The C<dsd-db> script then imports
-the data in the JSON files into a database. The data is then used by a number of
-Munin plugins (which do not currently exist) which present the data to the user.
 
 =head1 USAGE
 
@@ -284,6 +273,12 @@ Show help.
 =head1 SEE ALSO
 
 =over
+
+=item C<dsd-cp>, which copies DSD data files from the DNS server to a remote server.
+
+=item C<dsd-db>, which processes DSD data files and writes the data to a database.
+
+=item C<dsd-munin>, a Munin plugin for displaying graphs based on the DSD database.
 
 =item L<https://www.centralnic.com/>
 
