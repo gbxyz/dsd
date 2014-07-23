@@ -27,9 +27,6 @@ DSD - A Simple DNS Statistics Collecting Daemon
 
 # CONFIGURATION OPTIONS
 
-        [dsd]
-        (miscellaneous dsd options)
-
         [db]
 
         ; DBI DSN

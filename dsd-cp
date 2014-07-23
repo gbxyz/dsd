@@ -1,0 +1,133 @@
+#!/usr/bin/perl
+# Copyright 2014 CentralNic Ltd. This program is free software; you can
+# redistribute it and/or modify it under the same terms as Perl itself.
+use Config::Simple;
+use Getopt::Long;
+use POSIX;
+use Pod::Usage;
+use Sys::Syslog qw(:standard :macros);
+use strict;
+
+openlog('dsd-cp', 'ndelay,perror,pid', LOG_DAEMON);
+
+my $file = '/etc/dsd.conf';
+my $help;
+my $stdin;
+GetOptions(
+	'config=s' => \$file,
+	'help'     => \$help,
+);
+
+pod2usage('-verbose' => 99, '-sections' => 'USAGE|OPTIONS') if ($help);
+
+my $config = Config::Simple->new($file)->hashref;
+
+syslog(LOG_DEBUG, "Running with config from $file");
+
+if (!opendir(DIR, $config->{'dsd.directory'})) {
+	syslog(LOG_CRIT, "Error opening '".$config->{'dsd.directory'}.": $!");
+	exit(1);
+}
+
+my @files = map { $config->{'dsd.directory'} . '/' . $_ } grep { /\.js$/ } readdir(DIR);
+
+closedir(DIR);
+
+foreach my $file (@files) {
+	if (!system(
+		'scp',
+		'-q',
+		'-o', sprintf('IdentityFile="%s"', $config->{'cp.key'}),
+		$file,
+		sprintf(
+			'%s@%s:%s/',
+			$config->{'cp.user'},
+			$config->{'cp.host'},
+			$config->{'cp.directory'},
+		),
+	)) {
+		syslog(LOG_CRIT, "Error copying $file: $!");
+
+	} else {
+		syslog(LOG_DEBUG, "File $file copied to $config->{'cp.host'}");
+		unlink($file);
+
+	}
+}
+
+__END__
+
+=pod
+
+=head1 NAME
+
+DSD - A Simple DNS Statistics Collecting Daemon
+
+=head1 DESCRIPTION
+
+=head1 USAGE
+
+	dsd [OPTIONS]
+
+=head1 OPTIONS
+
+=over
+
+=item --config=FILE
+
+Specify config file. Defaults to /etc/dsd/dsd.conf
+
+=item --help
+
+Show help.
+
+=back
+
+=head1 CONFIGURATION OPTIONS
+
+	[dsd]
+
+	; location to where files are written:
+	directory="/var/lib/dsd"
+
+	[cp]
+
+	; SSH key to use:
+	key=/path/to/id_rsa
+
+	; username on remote host
+	user=dsd
+
+	; server to copy to
+	host=hostname
+
+	; directory on remote host
+	directory=/home/dsd/data
+
+=head1 SEE ALSO
+
+=over
+
+=item C<dsd>, the daemon which runs on a DNS server and generates statistical data.
+
+=item C<dsd-db>, which processes DSD data files and writes the data to a database.
+
+=item C<dsd-munin>, a Munin plugin for displaying graphs based on the DSD database.
+
+=item L<https://www.centralnic.com/>
+
+=item L<http://www.net-dns.org/>
+
+=item L<http://dns.measurement-factory.com/tools/dsc/>
+
+=item L<http://munin-monitoring.org/>
+
+=back
+
+=head1 COPYRIGHT
+
+dsd is Copyright 2014 CentralNic Ltd. All rights reserved. This program is free
+software; you can redistribute it and/or modify it under the same terms as Perl
+itself.
+
+=cut

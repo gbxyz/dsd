@@ -2,6 +2,12 @@
 
 DSD - A Simple DNS Statistics Collecting Daemon
 
+# DESCRIPTION
+
+`dsd` is a daemon which runs on a DNS server and uses libpcap, [Net::DNS](https://metacpan.org/pod/Net::DNS) and
+[NetPacket](https://metacpan.org/pod/NetPacket) to analyse incoming DNS queries. It will periodically write data
+files to disk.
+
 # USAGE
 
         dsd [OPTIONS]
@@ -25,10 +31,6 @@ DSD - A Simple DNS Statistics Collecting Daemon
     Include DNS queries observed in debugging output. Ignored unless --debug is
     used.
 
-- --once
-
-    Run for one loop then terminate.
-
 - --help
 
     Show help.
@@ -36,6 +38,7 @@ DSD - A Simple DNS Statistics Collecting Daemon
 # CONFIGURATION OPTIONS
 
         [dsd]
+
         ; interface to capture packets on
         interface=eth0
 
@@ -46,16 +49,16 @@ DSD - A Simple DNS Statistics Collecting Daemon
         interval=300
 
         ; list of zones you're interested in
-        zones="foo,bar"
+        zones="foo,bar.com"
+
+        ; location to where files are written:
+        directory="/var/lib/dsd"
 
 # SEE ALSO
 
-- `dsd-cp`, which copies DSD data files from the DNS server to a remote
-server.
-- `dsd-db`, which processes DSD data files and writes the data to a
-database.
-- `dsd-munin`, a Munin plugin for displaying graphs based on the DSD
-database.
+- `dsd-cp`, which copies DSD data files from the DNS server to a remote server.
+- `dsd-db`, which processes DSD data files and writes the data to a database.
+- `dsd-munin`, a Munin plugin for displaying graphs based on the DSD database.
 - [https://www.centralnic.com/](https://www.centralnic.com/)
 - [http://www.net-dns.org/](http://www.net-dns.org/)
 - [http://dns.measurement-factory.com/tools/dsc/](http://dns.measurement-factory.com/tools/dsc/)

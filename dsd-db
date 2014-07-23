@@ -108,6 +108,7 @@ sub parse_json {
 		}
 	}
 }
+
 __END__
 
 =pod
@@ -144,9 +145,6 @@ Show help.
 =back
 
 =head1 CONFIGURATION OPTIONS
-
-	[dsd]
-	(miscellaneous dsd options)
 
 	[db]
 

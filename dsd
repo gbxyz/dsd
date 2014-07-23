@@ -266,6 +266,7 @@ Show help.
 =head1 CONFIGURATION OPTIONS
 
 	[dsd]
+
 	; interface to capture packets on
 	interface=eth0
 
@@ -276,7 +277,10 @@ Show help.
 	interval=300
 
 	; list of zones you're interested in
-	zones="foo,bar"
+	zones="foo,bar.com"
+
+	; location to where files are written:
+	directory="/var/lib/dsd"
 
 =head1 SEE ALSO
 
