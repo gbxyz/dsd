@@ -226,6 +226,12 @@ __END__
 
 DSD - A Simple DNS Statistics Collecting Daemon
 
+=head1 DESCRIPTION
+
+C<dsd> is a daemon which runs on a DNS server and uses libpcap, L<Net::DNS> and
+L<NetPacket> to analyse incoming DNS queries. It will periodically write data
+files to disk.
+
 =head1 USAGE
 
 	dsd [OPTIONS]
