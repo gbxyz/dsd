@@ -29,9 +29,13 @@ if (!opendir(DIR, $config->{'dsd.directory'})) {
 	exit(1);
 }
 
+syslog(LOG_DEBUG, "Scanning for files in $config->{'dsd.directory'}");
+
 my @files = map { $config->{'dsd.directory'} . '/' . $_ } grep { /\.js$/ } readdir(DIR);
 
 closedir(DIR);
+
+syslog(LOG_DEBUG, scalar(@files)." files to copy");
 
 foreach my $file (@files) {
 	if (!system(
@@ -54,6 +58,8 @@ foreach my $file (@files) {
 
 	}
 }
+
+syslog(LOG_DEBUG, "done");
 
 __END__
 
