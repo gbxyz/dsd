@@ -40,12 +40,14 @@ syslog(LOG_DEBUG, scalar(@files)." files to copy");
 
 my ($IN, $OUT);
 
-my $pid = open2($IN, $OUT, sprintf(
+my $pid = open2(
+	$IN,
+	$OUT,
 	'sftp',
-	' -b', '-',
+	'-b', '-',
 	'-o', sprintf('IdentityFile="%s"', $config->{'cp.key'}),
 	sprintf('%s@%s', $config->{'cp.user'}, $config->{'cp.host'}),
-));
+);
 
 syslog(LOG_DEBUG, sprintf('connected to %s', $config->{'cp.host'}));
 
