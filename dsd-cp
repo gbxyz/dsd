@@ -52,7 +52,7 @@ syslog(LOG_DEBUG, sprintf('connected to %s', $config->{'cp.host'}));
 printf($IN "cd '%s'\n", $config->{'cp.directory'});
 
 foreach my $file (@files) {
-	my $cmd = sprintf("put '%s'", $file);]
+	my $cmd = sprintf("put '%s'", $file);
 	syslog(LOG_DEBUG, $cmd);
 	print $IN "$cmd\n";
 }
