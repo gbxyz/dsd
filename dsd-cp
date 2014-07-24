@@ -25,50 +25,18 @@ my $config = Config::Simple->new($file)->hashref;
 
 syslog(LOG_DEBUG, "Running with config from $file");
 
-if (!opendir(DIR, $config->{'dsd.directory'})) {
-	syslog(LOG_CRIT, "Error opening '".$config->{'dsd.directory'}.": $!");
-	exit(1);
-}
+syslog(LOG_DEBUG, "Copying files");
+system(sprintf(
+	'scp -q -o IdentityFile="%s" %s/*.js %s@%s:%s/',
+	$config->{'cp.key'},
+	$config->{'dsd.directory'},
+	$config->{'cp.user'},
+	$config->{'cp.host'},
+	$config->{'cp.directory'},
+));
 
-syslog(LOG_DEBUG, "Scanning for files in $config->{'dsd.directory'}");
-
-my @files = map { $config->{'dsd.directory'} . '/' . $_ } grep { /\.js$/ } readdir(DIR);
-
-closedir(DIR);
-
-syslog(LOG_DEBUG, scalar(@files)." files to copy");
-
-my ($IN, $OUT);
-
-my $pid = open2(
-	$IN,
-	$OUT,
-	'sftp',
-	'-b', '-',
-	'-o', sprintf('IdentityFile="%s"', $config->{'cp.key'}),
-	sprintf('%s@%s', $config->{'cp.user'}, $config->{'cp.host'}),
-);
-
-syslog(LOG_DEBUG, sprintf('connected to %s', $config->{'cp.host'}));
-
-printf($IN "cd '%s'\n", $config->{'cp.directory'});
-
-foreach my $file (@files) {
-	my $cmd = sprintf("put '%s'", $file);
-	syslog(LOG_DEBUG, $cmd);
-	print $IN "$cmd\n";
-}
-
-close($IN);
-
-while (<$OUT>) {
-	chomp;
-	syslog(LOG_DEBUG, $_);
-}
-
-close($OUT);
-
-waitpid($pid, 0);
+syslog(LOG_DEBUG, "Deleting files");
+#system('rm -f %s/*.js', $config->{'dsd.directory'});
 
 syslog(LOG_DEBUG, "done");
 
