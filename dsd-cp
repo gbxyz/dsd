@@ -5,6 +5,7 @@ use Config::Simple;
 use Getopt::Long;
 use POSIX;
 use Pod::Usage;
+use IPC::Open2;
 use Sys::Syslog qw(:standard :macros);
 use strict;
 
@@ -37,27 +38,33 @@ closedir(DIR);
 
 syslog(LOG_DEBUG, scalar(@files)." files to copy");
 
+my ($IN, $OUT);
+
+my $pid = open2($IN, $OUT, sprintf(
+	'sftp',
+	' -b', '-',
+	'-o', sprintf('IdentityFile="%s"', $config->{'cp.key'}),
+	sprintf('%s@%s', $config->{'cp.user'}, $config->{'cp.host'}),
+));
+
+syslog(LOG_DEBUG, sprintf('connected to %s', $config->{'cp.host'}));
+
+printf($IN "cd '%s'\n", $config->{'cp.directory'});
+
 foreach my $file (@files) {
-	if (!system(
-		'scp',
-		'-q',
-		'-o', sprintf('IdentityFile="%s"', $config->{'cp.key'}),
-		$file,
-		sprintf(
-			'%s@%s:%s/',
-			$config->{'cp.user'},
-			$config->{'cp.host'},
-			$config->{'cp.directory'},
-		),
-	)) {
-		syslog(LOG_CRIT, "Error copying $file: $!");
-
-	} else {
-		syslog(LOG_DEBUG, "File $file copied to $config->{'cp.host'}");
-		unlink($file);
-
-	}
+	printf($IN "put '%s'\n", $file);
 }
+
+close($IN);
+
+while ($OUT) {
+	chomp;
+	syslog(LOG_DEBUG, $_);
+}
+
+close($OUT);
+
+waitpid($pid, 0);
 
 syslog(LOG_DEBUG, "done");
 
