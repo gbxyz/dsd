@@ -44,14 +44,19 @@ $SIG{'PIPE'} = sub {
 	exit(1);
 };
 
-syslog(LOG_DEBUG, "opening pipe to sftp");
+my $cmd = join(' ', (
+	'sftp',
+	'-b' , '-',
+	'-o', sprintf('IdentityFile=%s', $config->{'dsd.key'}),
+	sprintf('%s@%s', $config->{'dsd.user'}, $config->{'dsd.host'})
+));
+
+syslog(LOG_DEBUG, $cmd);
+
 my $pid;
 eval { $pid = open3(
 	\*CHLD_IN, \*CHLD_OUT, \*CHLD_ERR,
-	'/usr/sbin/sftp',
-	'-b' , '-',
-	'-o', sprintf('IdentityFile=%s', $config->{'dsd.key'}),
-	sprintf('%s@%s', $config->{'dsd.user'}, $config->{'dsd.host'}),
+	$cmd,
 ) };
 if ($@ || $pid < 1) {
 	chomp($@);
