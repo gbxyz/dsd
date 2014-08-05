@@ -5,7 +5,7 @@ use Config::Simple;
 use Getopt::Long;
 use POSIX;
 use Pod::Usage;
-use IPC::Open2;
+use IPC::Open3;
 use Sys::Syslog qw(:standard :macros);
 use strict;
 
@@ -25,18 +25,63 @@ my $config = Config::Simple->new($file)->hashref;
 
 syslog(LOG_DEBUG, "Running with config from $file");
 
-syslog(LOG_DEBUG, "Copying files");
-system(sprintf(
-	'scp -q -o IdentityFile="%s" %s/*.js %s@%s:%s/',
-	$config->{'cp.key'},
-	$config->{'dsd.directory'},
-	$config->{'cp.user'},
-	$config->{'cp.host'},
-	$config->{'cp.directory'},
-));
+my @files;
+if (!opendir(DIR, $config->{'dsd.directory'})) {
+	syslog(LOG_CRIT, "Error reading $config->{'dsd.directory'}: $!");
+	exit(1);
 
-syslog(LOG_DEBUG, "Deleting files");
-#system('rm -f %s/*.js', $config->{'dsd.directory'});
+} else {
+	@files = map { $config->{'dsd.directory'} .'/' . $_ } grep { /\.js$/i } readdir(DIR);
+	closedir(DIR);
+
+}
+
+$SIG{'PIPE'} = sub {
+	syslog(LOG_CRIT, "received SIGPIPE from child");
+	exit(1);
+};
+
+my $pid;
+eval { $pid = open3(
+	\*CHLD_IN, \*CHLD_OUT, \*CHLD_ERR,
+	'sftp',
+	'-b' , '-',
+	'-o', sprintf('IdentityFile=%s', $config->{'dsd.key'}),
+	sprintf('%s@%s', $config->{'dsd.user'}, $config->{'dsd.host'}),
+) };
+if ($@ || $pid < 1) {
+	chomp($@);
+	syslog(LOG_CRIT, "Error executing sftp: $@");
+	exit(1);
+}
+
+syslog(LOG_DEBUG, "Copying files");
+
+printf(CHLD_IN "cd %s\n", $config->{'cp.directory'});
+foreach my $file (@files) {
+	printf(CHLD_IN "put %s\n", $file);
+}
+
+while (my $out = <CHLD_OUT>) {
+	chomp($out);
+	syslog(LOG_DEBUG, $out);
+}
+
+while (my $out = <CHLD_ERR>) {
+	chomp($out);
+	syslog(LOG_CRIT, $out);
+}
+
+waitpid($pid, 0);
+
+my $status = $? >> 8;
+if ($status > 0) {
+	syslog(LOG_CRIT, "sftp terminated with status $status");
+	exit(1);
+}
+
+syslog(LOG_DEBUG, "deleting files");
+map { unlink($_) } @files;
 
 syslog(LOG_DEBUG, "done");
 
