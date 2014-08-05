@@ -31,7 +31,7 @@ if (!opendir(DIR, $config->{'dsd.directory'})) {
 	exit(1);
 
 } else {
-	syslog(LOG_DEBUG, "Reading list of files in $config->{'dsd.directory'");
+	syslog(LOG_DEBUG, "Reading list of files in $config->{'dsd.directory'}");
 	@files = map { $config->{'dsd.directory'} .'/' . $_ } grep { /\.js$/i } readdir(DIR);
 	closedir(DIR);
 
