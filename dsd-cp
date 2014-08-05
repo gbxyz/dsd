@@ -37,8 +37,6 @@ if (!opendir(DIR, $config->{'dsd.directory'})) {
 
 }
 
-splice(@files, 500);
-
 syslog(LOG_DEBUG, sprintf("%d files", scalar(@files)));
 
 $SIG{'PIPE'} = sub {
