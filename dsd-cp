@@ -47,8 +47,8 @@ $SIG{'PIPE'} = sub {
 my $cmd = join(' ', (
 	'sftp',
 	'-b' , '-',
-	'-o', sprintf('IdentityFile=%s', $config->{'dsd.key'}),
-	sprintf('%s@%s', $config->{'dsd.user'}, $config->{'dsd.host'})
+	'-o', sprintf('IdentityFile=%s', $config->{'cp.key'}),
+	sprintf('%s@%s', $config->{'cp.user'}, $config->{'cp.host'})
 ));
 
 syslog(LOG_DEBUG, $cmd);
