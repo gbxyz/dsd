@@ -37,6 +37,11 @@ if (!opendir(DIR, $config->{'dsd.directory'})) {
 
 }
 
+if (scalar(@files) < 1) {
+	syslog(LOG_DEBUG, "nothing to do");
+	exit(0);
+}
+
 syslog(LOG_DEBUG, sprintf("%d files", scalar(@files)));
 
 $SIG{'PIPE'} = sub {
