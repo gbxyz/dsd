@@ -31,20 +31,24 @@ if (!opendir(DIR, $config->{'dsd.directory'})) {
 	exit(1);
 
 } else {
+	syslog(LOG_DEBUG, "Reading list of files in $config->{'dsd.directory'");
 	@files = map { $config->{'dsd.directory'} .'/' . $_ } grep { /\.js$/i } readdir(DIR);
 	closedir(DIR);
 
 }
+
+syslog(LOG_DEBUG, sprintf("%d files", scalar(@files)));
 
 $SIG{'PIPE'} = sub {
 	syslog(LOG_CRIT, "received SIGPIPE from child");
 	exit(1);
 };
 
+syslog(LOG_DEBUG, "opening pipe to sftp");
 my $pid;
 eval { $pid = open3(
 	\*CHLD_IN, \*CHLD_OUT, \*CHLD_ERR,
-	'sftp',
+	'/usr/sbin/sftp',
 	'-b' , '-',
 	'-o', sprintf('IdentityFile=%s', $config->{'dsd.key'}),
 	sprintf('%s@%s', $config->{'dsd.user'}, $config->{'dsd.host'}),
