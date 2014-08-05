@@ -72,16 +72,19 @@ printf(CHLD_IN "cd %s\n", $config->{'cp.directory'});
 foreach my $file (@files) {
 	printf(CHLD_IN "put %s\n", $file);
 }
+close(CHLD_IN);
 
 while (my $out = <CHLD_OUT>) {
 	chomp($out);
 	syslog(LOG_DEBUG, $out);
 }
+close(CHLD_OUT);
 
 while (my $out = <CHLD_ERR>) {
 	chomp($out);
 	syslog(LOG_CRIT, $out);
 }
+close(CHLD_ERR);
 
 waitpid($pid, 0);
 
