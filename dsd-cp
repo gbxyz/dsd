@@ -37,7 +37,7 @@ if (!opendir(DIR, $config->{'dsd.directory'})) {
 
 }
 
-splice(@files, 50);
+splice(@files, 500);
 
 syslog(LOG_DEBUG, sprintf("%d files", scalar(@files)));
 
