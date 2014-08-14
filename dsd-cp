@@ -51,7 +51,8 @@ $SIG{'PIPE'} = sub {
 
 my $cmd = join(' ', (
 	'sftp',
-	'-b' , '-',
+	'-b', '-',
+	'-o', 'StrictHostKeyChecking=no',
 	'-o', sprintf('IdentityFile=%s', $config->{'cp.key'}),
 	sprintf('%s@%s', $config->{'cp.user'}, $config->{'cp.host'})
 ));
