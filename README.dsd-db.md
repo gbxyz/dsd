@@ -44,9 +44,7 @@ DSD - A Simple DNS Statistics Collecting Daemon
 
 # DATABASE SCHEMA
 
-The following SQL statements can be used to configure an SQLite database for
-use with `dsd-db`. You will need to modify them if you want to use a different
-database:
+## SQLite
 
         # the 'files' table stores a record of all the files that
         # have been processed:
@@ -66,6 +64,55 @@ database:
                 `rcode`   VARCHAR,
                 `queries` INTEGER
         );
+        CREATE INDEX `end` ON data (`end`);
+        CREATE INDEX `end` ON data (`end`);
+        CREATE INDEX `family` ON data (`family`);
+        CREATE INDEX `host` ON data (`host`);
+        CREATE INDEX `proto` ON data (`proto`);
+        CREATE INDEX `rcode` ON data (`rcode`);
+        CREATE INDEX `start` ON data (`start`);
+        CREATE INDEX `zone` ON data (`zone`);
+
+## MySQL/MariaDB
+
+        # create the database
+        CREATE DATABASE `dsd`;
+
+        # the 'files' table stores a record of all the files that
+        # have been processed:
+        CREATE TABLE `dsd`.`files` (
+                `filename` VARCHAR(255) NOT NULL,
+                `processed` datetime NOT NULL,
+                PRIMARY KEY (`filename`),
+                UNIQUE KEY `filename` (`filename`)
+        );
+
+        # the 'data' table stores the actual data:
+        CREATE TABLE `dsd`.`data` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `host` VARCHAR(255) NOT NULL,
+                `start` DATETIME NOT NULL,
+                `end` DATETIME NOT NULL,
+                `zone` VARCHAR(255) DEFAULT NULL,
+                `family` TINYINT(1) UNSIGNED DEFAULT NULL,
+                `proto` ENUM('udp','tcp') DEFAULT NULL,
+                `rcode` VARCHAR(24) DEFAULT NULL,
+                `queries` int(11) UNSIGNED NOT NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `id` (`id`),
+                KEY `host` (`host`),
+                KEY `end` (`end`),
+                KEY `zone` (`zone`),
+                KEY `family` (`family`),
+                KEY `proto` (`proto`),
+                KEY `rcode` (`rcode`)
+        );
+
+## Other
+
+If you want to use a "real" database other than the "toy" databases described
+above, then I'm sure you know how to convert the SQL statements above so that
+they work with your preferred RDBMS.
 
 # SEE ALSO
 
