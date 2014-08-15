@@ -32,6 +32,9 @@ my $db = DBI->connect(
 	$config->{'db.dsn'},
 	$config->{'db.user'},
 	$config->{'db.pass'},
+	{
+		'AutoCommit' => 0,
+	},
 );
 
 my $fssth = $db->prepare("SELECT COUNT(1) FROM files WHERE (filename=?)");
@@ -41,8 +44,6 @@ my $fisth = $db->prepare("INSERT INTO files (filename, processed) VALUES (?, ?)"
 my $disth = $db->prepare("INSERT INTO data
 				(host, start, end, zone, family, proto, rcode, queries)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-
-$db->do("BEGIN TRANSACTION");
 
 my @families = qw(4 6);
 my @protos = qw(udp tcp);
@@ -80,7 +81,7 @@ if ($stdin) {
 	}
 }
 
-$db->do("COMMIT TRANSACTION");
+$db->commit;
 
 syslog(LOG_DEBUG, "done");
 
