@@ -97,7 +97,7 @@ sub parse_json {
 	foreach my $zone (keys(%{$data->{'zones'}})) {
 		$total += $data->{'zones'}->{$zone}->{'queries'};
 
-		$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, $zone, undef, undef, undef, int($data->{'zones'}->{$zone}->{'queries'});
+		$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, $zone, undef, undef, undef, int($data->{'zones'}->{$zone}->{'queries'}));
 
 		foreach my $family (@families) {
 			$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, $zone, $family, undef, undef, int($data->{'zones'}->{$zone}->{'families'}->{$family}));
