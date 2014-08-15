@@ -54,6 +54,9 @@ files to disk.
         ; location to where files are written:
         directory="/var/lib/dsd"
 
+        ; file to write pid to
+        pidfile="/var/run/dsd.pid"
+
 # SEE ALSO
 
 - `dsd-cp`, which copies DSD data files from the DNS server to a remote server.

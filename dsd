@@ -60,6 +60,16 @@ Net::Pcap::setfilter($pcap, $filter);
 $SIG{'HUP'} = \&hup_handler;
 
 unless ($foreground) {
+	if (!open(PIDFILE, '>'.$config->{'dsd.pidfile'})) {
+		syslog(LOG_CRIT, "Error writing pid to $config->{'dsd.pidfile'}: $!");
+		exit(1);
+
+	} else {
+		print PIDFILE $$;
+		close(PIDFILE);
+
+	}
+
 	syslog(LOG_DEBUG, "daemonising") if ($debug);
 	if (fork() > 0) {
 		exit(0);
@@ -281,6 +291,9 @@ Show help.
 
 	; location to where files are written:
 	directory="/var/lib/dsd"
+
+	; file to write pid to
+	pidfile="/var/run/dsd.pid"
 
 =head1 SEE ALSO
 
