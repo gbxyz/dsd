@@ -92,7 +92,11 @@ sub parse_json {
 	$data->{'start'} = strftime($datefmt, localtime($data->{'start'}));
 	$data->{'end'}   = strftime($datefmt, localtime($data->{'end'}));
 
+	my $total = 0;
+
 	foreach my $zone (keys(%{$data->{'zones'}})) {
+		$total += $data->{'zones'}->{$zone}->{'queries'};
+
 		$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, $zone, undef, undef, undef, $data->{'zones'}->{$zone}->{'queries'});
 
 		foreach my $family (@families) {
@@ -107,6 +111,8 @@ sub parse_json {
 			$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, $zone, undef, undef, $rcode, $data->{'zones'}->{$zone}->{'rcodes'}->{$rcode});
 		}
 	}
+
+	$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, undef, undef, undef, undef, $total);
 }
 
 __END__
