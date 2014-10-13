@@ -88,7 +88,9 @@ syslog(LOG_DEBUG, "done");
 sub parse_json {
 	my $json = shift;
 
-	my $data = from_json($json);
+	my $data;
+	eval { $data = from_json($json); };
+	return undef if (!$data || $@);
 
 	$data->{'start'} = strftime($datefmt, localtime($data->{'start'}));
 	$data->{'end'}   = strftime($datefmt, localtime($data->{'end'}));
