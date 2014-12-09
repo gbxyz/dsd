@@ -1,0 +1,126 @@
+#!/usr/bin/perl
+use DBI;
+use Getopt::Long;
+use Config::Simple;
+use Pod::Usage;
+use strict;
+
+my $file = '/etc/dsd/dsd.conf';
+my $help;
+my $month;
+GetOptions(
+	'config=s' => \$file,
+	'help'     => \$help,
+	'month=s' => \$month,
+);
+
+pod2usage('-verbose' => 99, '-sections' => 'USAGE|OPTIONS') if ($help);
+
+if ($month !~ /^\d{4}-\d{2}$/) {
+	print STDERR "Invalid or missing --month argument\n";
+	exit(1);
+}
+
+my $config = Config::Simple->new($file)->hashref;
+
+my $db = DBI->connect(
+	$config->{'db.dsn'},
+	$config->{'db.user'},
+	$config->{'db.pass'},
+	{ 'RaiseError' => 1 },
+);
+
+my $sth = $db->prepare('SELECT
+			zone,
+			proto,
+			SUM(queries) AS queries
+			FROM data
+			WHERE (
+				!ISNULL(zone) AND
+				!ISNULL(proto) AND
+				YEAR(start)=? AND
+				MONTH(start)=?
+			)
+			GROUP BY zone,proto');
+
+$sth->execute(map { int } split(/-/, $month, 2));
+
+my $data = {};
+while (my $row = $sth->fetchrow_hashref) {
+	$data->{$row->{'zone'}}->{$row->{'proto'}} = $row->{'queries'};
+}
+
+$sth->finish;
+
+print join("\t", qw(zone udp tcp))."\n";
+
+foreach my $zone (sort(keys(%{$data}))) {
+	print join("\t", (
+		$zone,
+		int($data->{$zone}->{'udp'}),
+		int($data->{$zone}->{'tcp'}),
+	))."\n";
+}
+
+__END__
+
+=pod
+
+=head1 NAME
+
+DSD - A Simple DNS Statistics Collecting Daemon
+
+=head1 DESCRIPTION
+
+C<dsd-icann> is a script which queries a DSD database and extracts the data
+required by ICANN for gTLD monthly SRS Activity Reports.
+
+=head1 USAGE
+
+	dsd-icann [OPTIONS]
+
+=head1 OPTIONS
+
+=over
+
+=item --config=FILE
+
+Specify config file. Defaults to /etc/dsd/dsd.conf
+
+=item --month=MONTH
+
+Month specification in YYYY-MM format.
+
+=item --help
+
+Show help.
+
+=head1 SEE ALSO
+
+=over
+
+=item C<dsd>, the daemon which runs on a DNS server and generates statistical data.
+
+=item C<dsd-db>, which processes DSD data files and writes the data to a database.
+
+=item C<dsd-cp>, which copies DSD data files from the DNS server to a remote server.
+
+=item C<dsd-munin>, a Munin plugin for displaying graphs based on the DSD database.
+
+=item L<https://www.centralnic.com/>
+
+=item L<http://www.net-dns.org/>
+
+=item L<http://dns.measurement-factory.com/tools/dsc/>
+
+=item L<http://munin-monitoring.org/>
+
+=back
+
+=head1 COPYRIGHT
+
+dsd is Copyright 2014 CentralNic Ltd. All rights reserved. This program is free
+software; you can redistribute it and/or modify it under the same terms as Perl
+itself.
+
+=cut
