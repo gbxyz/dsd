@@ -1,0 +1,271 @@
+#!/usr/bin/perl
+# Copyright 2014 CentralNic Ltd. This program is free software; you can
+# redistribute it and/or modify it under the same terms as Perl itself.
+use lib $ENV{'MUNIN_LIBDIR'} || '.';
+use Config::Simple;
+use DBI;
+use Getopt::Long;
+use Pod::Usage;
+use Munin::Plugin;
+use strict;
+
+my $help;
+GetOptions('help' => \$help);
+
+my $config = 1 if ($ARGV[-1] eq 'config');
+my $func   = $ARGV[0] || (split(/_/, $0, 2))[1];
+
+my $funcs = {
+	'total_qps'		=> \&total_qps,
+	'qps_per_host'		=> \&qps_per_host,
+	'qps_per_zone'		=> \&qps_per_zone,
+};
+
+my ($db, $get_host_qps_sth);
+if (defined($funcs->{$func})) {
+	$db = DBI->connect(
+		$ENV{'dsn'},
+		$ENV{'user'},
+		$ENV{'pass'},
+	);
+
+	$get_host_qps_sth = $db->prepare("SELECT
+						(UNIX_TIMESTAMP(end)-UNIX_TIMESTAMP(start)) AS time,
+						queries
+						FROM data
+						WHERE (
+							host=? AND
+							zone IS NULL AND
+							family IS NULL AND
+							proto IS NULL AND
+							rcode IS NULL
+						)
+						ORDER BY end DESC
+						LIMIT 0,1");
+
+	&{$funcs->{$func}}($config);
+
+} elsif (-t || $help) {
+	pod2usage('-verbose' => 99, '-sections' => 'USAGE|OPTIONS|PLUGINS');
+
+} else {
+	print STDERR "Error: invalid function '$func'\n";
+	exit(1);
+
+}
+
+sub host_list {
+	my @hosts;
+	my $sth = $db->prepare('SELECT DISTINCT host FROM data');
+	$sth->execute;
+	while (my $host = ($sth->fetchrow_array)[0]) {
+		push(@hosts, $host);
+	};
+	return @hosts;
+}
+
+sub zone_list {
+	my @zones;
+	my $sth = $db->prepare('SELECT DISTINCT zone FROM data WHERE !ISNULL(zone)');
+	$sth->execute;
+	while (my $zone = ($sth->fetchrow_array)[0]) {
+		push(@zones, $zone);
+	};
+	return @zones;
+}
+
+sub get_host_qps {
+	$get_host_qps_sth->execute(shift);
+	my $row = $get_host_qps_sth->fetchrow_hashref;
+	return int($row->{'queries'} / $row->{'time'});
+}
+
+sub total_qps {
+	my $config = shift;
+
+	if ($config) {
+		print	"graph_category DNS\n".
+			"graph_title Total DNS Queries\n".
+			"qps.label Queries per second\n".
+			"qps.min 0\n";
+
+	} else {
+		my $qps = 0;
+		map { $qps += get_host_qps($_) } host_list();
+		printf("qps.value %d\n", $qps);
+
+	}
+}
+
+sub qps_per_host {
+	my $config = shift;
+
+	if ($config) {
+		print	"graph_category DNS\n".
+			"graph_title DNS Queries per server\n";
+
+		foreach my $host (host_list()) {
+			printf(
+				"%s.label %s\n%s.min 0\n",
+				clean_fieldname($host),
+				$host,
+				clean_fieldname($host)
+			);
+		}
+
+	} else {
+		my $sth = $db->prepare("SELECT
+					(UNIX_TIMESTAMP(end)-UNIX_TIMESTAMP(start)) AS time,
+					queries
+					FROM data
+					WHERE (
+						host=? AND
+						zone IS NULL AND
+						family IS NULL AND
+						proto IS NULL AND
+						rcode IS NULL
+					)
+					ORDER BY end DESC
+					LIMIT 0,1");
+
+		foreach my $host (host_list()) {
+			$sth->execute($host);
+			my $row = $sth->fetchrow_hashref;
+			printf("%s.value %d\n", clean_fieldname($host), $row->{'queries'} / $row->{'time'});
+		}
+
+	}
+}
+
+sub qps_per_zone {
+	my $config = shift;
+
+	if ($config) {
+		print	"graph_category DNS\n".
+			"graph_title DNS Queries per zone\n";
+
+		foreach my $zone (zone_list()) {
+			printf(
+				"%s.label %s\n%s.min 0\n",
+				clean_fieldname($zone),
+				$zone,
+				clean_fieldname($zone)
+			);
+		}
+
+	} else {
+		my $sth = $db->prepare("SELECT
+					(UNIX_TIMESTAMP(end)-UNIX_TIMESTAMP(start)) AS time,
+					queries
+					FROM data
+					WHERE (
+						host=? AND
+						zone=? AND
+						family IS NULL AND
+						proto IS NULL AND
+						rcode IS NULL
+					)
+					ORDER BY end DESC
+					LIMIT 0,1");
+
+		foreach my $zone (zone_list()) {
+			my $qps = 0;
+			foreach my $host (host_list()) {
+				$sth->execute($host, $zone);
+				next if ($sth->rows < 1);
+				my $row = $sth->fetchrow_hashref;
+				$qps += $row->{'queries'} / $row->{'time'};
+			}
+			printf("%s.value %d\n", clean_fieldname($zone), $qps);
+		}
+
+	}
+}
+
+__END__
+
+=pod
+
+=head1 NAME
+
+DSD - A Simple DNS Statistics Collecting Daemon
+
+=head1 DESCRIPTION
+
+C<dsd-munin> is an all-in-one Munin plugin for DSD. Different plugins can be
+activated by creating symbolic links to C<dsd-munin> with the appropriate
+names.
+
+=head1 USAGE
+
+	dsd-munin [--help] [PLUGIN] [config]
+
+=head1 OPTIONS
+
+=over
+
+=item --help
+
+Show help.
+
+=item [PLUGIN]
+
+By default, C<dsd-munin> determines the plugin function to run based on the
+name of the symbolic link, but this behaviour can be overwritten by providing
+the name as an argument. See L<PLUGINS> for further details.
+
+=item [config]
+
+Munin plugins accept a single argument, which, if it contains the value
+"config", causes the plugin to output configuration metadata used by Munin
+to generate graphs.
+
+=back
+
+=head1 PLUGINS
+
+=over
+
+=item total_qps
+
+Generates a single-series graph showing the total query rate.
+
+=item qps_per_host
+
+Generates a graph showing the query rate for each host across every zone.
+
+=item qps_per_zone
+
+Generates a graph showing the query rate for each zone across every host.
+
+=back
+
+=head1 SEE ALSO
+
+=over
+
+=item C<dsd>, the daemon which runs on a DNS server and generates statistical data.
+
+=item C<dsd-db>, which processes DSD data files and writes the data to a database.
+
+=item C<dsd-cp>, which copies DSD data files from the DNS server to a remote server.
+
+=item C<dsd-munin>, a Munin plugin for displaying graphs based on the DSD database.
+
+=item L<https://www.centralnic.com/>
+
+=item L<http://www.net-dns.org/>
+
+=item L<http://dns.measurement-factory.com/tools/dsc/>
+
+=item L<http://munin-monitoring.org/>
+
+=back
+
+=head1 COPYRIGHT
+
+dsd is Copyright 2014 CentralNic Ltd. All rights reserved. This program is free
+software; you can redistribute it and/or modify it under the same terms as Perl
+itself.
+
+=cut
