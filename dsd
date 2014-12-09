@@ -23,7 +23,7 @@ use strict;
 
 openlog('dsd', 'ndelay,perror,pid', LOG_DAEMON);
 
-my $file = '/etc/dsd.conf';
+my $file = '/etc/dsd/dsd.conf';
 my $foreground;
 my $debug;
 my $debug_queries;
