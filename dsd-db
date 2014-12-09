@@ -13,7 +13,7 @@ use strict;
 
 openlog('dsd-db', 'ndelay,perror,pid', LOG_DAEMON);
 
-my $file = '/etc/dsd.conf';
+my $file = '/etc/dsd/dsd.conf';
 my $help;
 my $stdin;
 GetOptions(
@@ -90,32 +90,36 @@ sub parse_json {
 
 	my $data;
 	eval { $data = from_json($json); };
-	return undef if (!$data || $@);
+	if (!$data || $@ ne '') {
+		chomp($@);
+		syslog(LOG_ERR, "error parsing JSON: $@");
 
-	$data->{'start'} = strftime($datefmt, localtime($data->{'start'}));
-	$data->{'end'}   = strftime($datefmt, localtime($data->{'end'}));
-
-	my $total = 0;
-
-	foreach my $zone (keys(%{$data->{'zones'}})) {
-		$total += $data->{'zones'}->{$zone}->{'queries'};
-
-		$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, $zone, undef, undef, undef, int($data->{'zones'}->{$zone}->{'queries'}));
-
-		foreach my $family (@families) {
-			$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, $zone, $family, undef, undef, int($data->{'zones'}->{$zone}->{'families'}->{$family}));
+	} else {
+		$data->{'start'} = strftime($datefmt, localtime($data->{'start'}));
+		$data->{'end'}   = strftime($datefmt, localtime($data->{'end'}));
+	
+		my $total = 0;
+	
+		foreach my $zone (keys(%{$data->{'zones'}})) {
+			$total += $data->{'zones'}->{$zone}->{'queries'};
+	
+			$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, $zone, undef, undef, undef, int($data->{'zones'}->{$zone}->{'queries'}));
+	
+			foreach my $family (@families) {
+				$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, $zone, $family, undef, undef, int($data->{'zones'}->{$zone}->{'families'}->{$family}));
+			}
+	
+			foreach my $proto (@protos) {
+				$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, $zone, undef, $proto, undef, int($data->{'zones'}->{$zone}->{'protos'}->{$proto}));
+			}
+	
+			foreach my $rcode (keys(%{$data->{'zones'}->{$zone}->{'rcodes'}})) {
+				$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, $zone, undef, undef, $rcode, int($data->{'zones'}->{$zone}->{'rcodes'}->{$rcode}));
+			}
 		}
-
-		foreach my $proto (@protos) {
-			$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, $zone, undef, $proto, undef, int($data->{'zones'}->{$zone}->{'protos'}->{$proto}));
-		}
-
-		foreach my $rcode (keys(%{$data->{'zones'}->{$zone}->{'rcodes'}})) {
-			$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, $zone, undef, undef, $rcode, int($data->{'zones'}->{$zone}->{'rcodes'}->{$rcode}));
-		}
+	
+		$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, undef, undef, undef, undef, int($total));
 	}
-
-	$disth->execute($data->{'host'}, $data->{'start'}, $data->{'end'}, undef, undef, undef, undef, int($total));
 }
 
 __END__
