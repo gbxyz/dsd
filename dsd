@@ -21,8 +21,6 @@ use Sys::Syslog qw(:standard :macros);
 use Time::HiRes qw(time ualarm);
 use strict;
 
-openlog('dsd', 'ndelay,perror,pid', LOG_DAEMON);
-
 my $file = '/etc/dsd/dsd.conf';
 my $foreground;
 my $debug;
@@ -39,6 +37,9 @@ GetOptions(
 pod2usage('-verbose' => 99, '-sections' => 'USAGE|OPTIONS') if ($help);
 
 $foreground = $foreground || $debug;
+
+openlog('dsd', 'ndelay,perror,pid', LOG_DAEMON);
+logmask(LOG_UPTO($debug ? LOG_DEBUG : LOG_INFO));
 
 my $config = Config::Simple->new($file)->hashref;
 
