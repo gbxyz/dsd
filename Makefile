@@ -11,3 +11,4 @@ install:
 	install -m 0755 dsd-db /usr/local/bin
 	install -m 0755 dsd-munin /usr/local/bin
 	install -m 0755 dsd-icann /usr/local/bin
+	install -m 0755 dsd-init.d-script /etc/init.d

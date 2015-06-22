@@ -1,0 +1,106 @@
+#!/bin/sh
+#
+#  
+#
+# chkconfig: 2345 55 25
+# description: DSD daemon.
+#
+# processname: dsd
+# config: /etc/dsd/dsd.conf
+
+
+### BEGIN INIT INFO
+# Provides: dsd
+# Required-Start: $local_fs $network
+# Required-Stop: $local_fs
+# Should-Start: 
+# Should-Stop: $network
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: DSD daemon.
+### END INIT INFO
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+prog="/home/cnic/dsd/dsd"
+config="--config=/etc/dsd/dsd.conf"
+
+start() {
+    if ps x| grep -q '\[dsd\]'; then echo "Already running..."; return 0; fi
+    [ -x $exec ] || exit 5
+    echo -n $"Starting $prog: "
+    $prog $config
+    retval=$?
+    [ $retval -eq 0 ] && echo OK
+    return $retval
+}
+
+stop() {
+    if [ "$(ps x| grep '\[dsd\]'| cut -d ' ' -f1)" != "" ]; then
+      echo -n "Stopping DSD with PID $(ps x| grep '\[dsd\]'| cut -d ' ' -f1)...	"
+      kill $(ps x| grep '\[dsd\]'| cut -d ' ' -f1)
+      sleep 2
+      if ! ps x| grep -q '\[dsd\]'; then
+        echo "OK"
+        return 0
+      else
+        echo -n "Forcing..."
+        kill -9 $(ps x| grep '\[dsd\]'| cut -d ' ' -f1)
+	sleep 2
+        if ! ps x| grep -q '\[dsd\]'; then
+          echo "OK"
+          return 0
+        else
+          echo "Fail"
+          return 1
+        fi
+      fi
+    else
+      echo "DSD not running."
+      return 1
+    fi
+}
+
+status() {
+    if [ "$(ps x| grep '\[dsd\]'| cut -d ' ' -f1)" != "" ]
+      then
+        echo "DSD running with PID $(ps x| grep '\[dsd\]'| cut -d ' ' -f1)"
+        return 0
+      else
+        echo "DSD not running."
+        return 1
+    fi
+}
+
+restart() {
+    stop
+    start
+}
+
+reload() {
+    kill -1 $(ps x| grep '\[dsd\]'| cut -d ' ' -f1)
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+	stop
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    reload)
+	reload
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|reload}"
+        exit 2
+esac
+exit $?
