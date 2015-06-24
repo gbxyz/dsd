@@ -25,6 +25,7 @@
 
 prog="/home/cnic/dsd/dsd"
 config="--config=/etc/dsd/dsd.conf"
+PID=$(ps x| grep '\[dsd\]'| sed 's,^[[:blank:]]*\([[:digit:]]\+\).*$,\1,g')
 
 start() {
     if ps x| grep -q '\[dsd\]'; then echo "Already running..."; return 0; fi
@@ -37,16 +38,16 @@ start() {
 }
 
 stop() {
-    if [ "$(ps x| grep '\[dsd\]'| cut -d ' ' -f1)" != "" ]; then
-      echo -n "Stopping DSD with PID $(ps x| grep '\[dsd\]'| cut -d ' ' -f1)...	"
-      kill $(ps x| grep '\[dsd\]'| cut -d ' ' -f1)
+    if [ "${PID}" != "" ]; then
+      echo -n "Stopping DSD with PID ${PID}...	"
+      kill ${PID}
       sleep 2
       if ! ps x| grep -q '\[dsd\]'; then
         echo "OK"
         return 0
       else
         echo -n "Forcing..."
-        kill -9 $(ps x| grep '\[dsd\]'| cut -d ' ' -f1)
+        kill -9 ${PID}
 	sleep 2
         if ! ps x| grep -q '\[dsd\]'; then
           echo "OK"
@@ -63,9 +64,9 @@ stop() {
 }
 
 status() {
-    if [ "$(ps x| grep '\[dsd\]'| cut -d ' ' -f1)" != "" ]
+    if [ "${PID}" != "" ]
       then
-        echo "DSD running with PID $(ps x| grep '\[dsd\]'| cut -d ' ' -f1)"
+        echo "DSD running with PID ${PID}"
         return 0
       else
         echo "DSD not running."
@@ -79,7 +80,7 @@ restart() {
 }
 
 reload() {
-    kill -1 $(ps x| grep '\[dsd\]'| cut -d ' ' -f1)
+    kill -1 ${PID}
 }
 
 case "$1" in
