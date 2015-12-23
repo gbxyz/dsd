@@ -12,7 +12,7 @@ use Sys::Syslog qw(:standard :macros);
 use strict;
 
 openlog('dsd-db', 'ndelay,perror,pid', LOG_DAEMON);
-logmask(LOG_UPTO(LOG_INFO));
+setlogmask(LOG_UPTO(LOG_INFO));
 
 my $file = '/etc/dsd/dsd.conf';
 my $help;

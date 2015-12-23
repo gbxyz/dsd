@@ -39,7 +39,7 @@ pod2usage('-verbose' => 99, '-sections' => 'USAGE|OPTIONS') if ($help);
 $foreground = $foreground || $debug;
 
 openlog('dsd', 'ndelay,perror,pid', LOG_DAEMON);
-logmask(LOG_UPTO($debug ? LOG_DEBUG : LOG_INFO));
+setlogmask(LOG_UPTO($debug ? LOG_DEBUG : LOG_INFO));
 
 my $config = Config::Simple->new($file)->hashref;
 
